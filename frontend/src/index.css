@@ -1,0 +1,387 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Poppins", "sans-serif";
+  --breakpoint-3xl: 1920px;
+  --color-primary: #194f87;
+  --color-secondary: #0f5841;
+}
+
+:root,
+html[data-theme="light"] {
+  --app-primary-blue: #194f87;
+  --app-primary-green: #0f5841;
+  --app-primary: var(--app-primary-blue);
+  --app-success: var(--app-primary-green);
+  --app-link: var(--app-primary-blue);
+  --app-blue-soft: #e7eef5;
+  --app-green-soft: #e6f1ed;
+
+  --app-bg: #ffffff;
+  --app-surface: #ffffff;
+  --app-surface-hover: #f3f4f6;
+  --app-card-bg: #ffffff;
+  --app-border: #e5e7eb;
+  --app-text: #111827;
+  --app-text-muted: #6b7280;
+}
+
+html[data-theme="dark"] {
+  --app-primary-blue: #2e6aa3;
+  --app-primary-green: #2f7d65;
+  --app-primary: var(--app-primary-blue);
+  --app-success: var(--app-primary-green);
+  --app-link: #8bb7e1;
+  --app-blue-soft: rgba(25, 79, 135, 0.24);
+  --app-green-soft: rgba(15, 88, 65, 0.24);
+
+  --app-bg: #111827;
+  --app-surface: #1f2937;
+  --app-surface-hover: #374151;
+  --app-card-bg: #1f2937;
+  --app-border: #374151;
+  --app-text: #ffffff;
+  --app-text-muted: #d1d5db;
+}
+
+/* Compatibility layer for legacy light-only utility classes in dashboard pages */
+html[data-theme="dark"] .bg-white {
+  background-color: var(--app-surface) !important;
+}
+
+html[data-theme="dark"] .text-gray-900,
+html[data-theme="dark"] .text-gray-800,
+html[data-theme="dark"] .text-gray-700,
+html[data-theme="dark"] .text-gray-600 {
+  color: var(--app-text) !important;
+}
+
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-gray-400,
+html[data-theme="dark"] .text-gray-300 {
+  color: var(--app-text-muted) !important;
+}
+
+html[data-theme="dark"] .border-gray-50,
+html[data-theme="dark"] .border-gray-100,
+html[data-theme="dark"] .border-gray-200,
+html[data-theme="dark"] .border-gray-300 {
+  border-color: var(--app-border) !important;
+}
+
+html[data-theme="dark"] .bg-gray-50,
+html[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--app-surface-hover) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-gray-50:hover,
+html[data-theme="dark"] .hover\:bg-gray-100:hover,
+html[data-theme="dark"] .hover\:bg-gray-200:hover {
+  background-color: var(--app-surface-hover) !important;
+}
+
+/* Keep landing page readable even when global dark mode is enabled. */
+html[data-theme="dark"] .landing-page {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+html[data-theme="dark"] .landing-page .bg-white {
+  background-color: #ffffff !important;
+}
+
+html[data-theme="dark"] .landing-page .text-gray-900 {
+  color: #111827 !important;
+}
+
+html[data-theme="dark"] .landing-page .text-gray-800 {
+  color: #1f2937 !important;
+}
+
+html[data-theme="dark"] .landing-page .text-gray-700 {
+  color: #374151 !important;
+}
+
+html[data-theme="dark"] .landing-page .text-gray-600 {
+  color: #4b5563 !important;
+}
+
+html[data-theme="dark"] .landing-page .text-gray-500,
+html[data-theme="dark"] .landing-page .text-gray-400,
+html[data-theme="dark"] .landing-page .text-gray-300 {
+  color: #6b7280 !important;
+}
+
+html[data-theme="dark"] .landing-page .border-gray-50,
+html[data-theme="dark"] .landing-page .border-gray-100,
+html[data-theme="dark"] .landing-page .border-gray-200,
+html[data-theme="dark"] .landing-page .border-gray-300 {
+  border-color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .landing-page .bg-gray-50 {
+  background-color: #f9fafb !important;
+}
+
+html[data-theme="dark"] .landing-page .bg-gray-100 {
+  background-color: #f3f4f6 !important;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-display);
+  }
+
+  body {
+    background-color: var(--app-bg);
+    color: var(--app-text);
+    overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  a {
+    color: var(--app-link);
+  }
+
+  a:hover {
+    filter: brightness(1.08);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--app-primary);
+  }
+
+  label {
+    color: var(--app-text);
+  }
+}
+
+@layer components {
+  .app-bg {
+    background-color: var(--app-bg);
+  }
+
+  .app-surface {
+    background-color: var(--app-surface);
+  }
+
+  .app-card {
+    background-color: var(--app-card-bg);
+    border: 1px solid var(--app-border);
+  }
+
+  .app-text {
+    color: var(--app-text);
+  }
+
+  .app-text-muted {
+    color: var(--app-text-muted);
+  }
+
+  .app-border {
+    border: 1px solid var(--app-border);
+  }
+
+  .app-border-top {
+    border-top: 1px solid var(--app-border);
+  }
+
+  .app-border-bottom {
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  .app-border-right {
+    border-right: 1px solid var(--app-border);
+  }
+
+  .input-box {
+    @apply w-full flex justify-between gap-3 text-sm rounded px-4 py-3 mb-4 mt-3 outline-none;
+    color: var(--app-text);
+    background-color: var(--app-surface-hover);
+    border: 1px solid var(--app-border);
+  }
+
+  .input,
+  .form-input {
+    @apply w-full text-sm outline-none px-2.5 py-3 rounded-md mt-2 placeholder:text-gray-500;
+    color: var(--app-text);
+    background-color: var(--app-surface);
+    border: 1px solid var(--app-border);
+  }
+
+  .input:focus,
+  .form-input:focus {
+    border-color: var(--app-primary);
+    box-shadow: 0 0 0 1px var(--app-primary);
+  }
+
+  .btn-primary {
+    @apply w-full text-sm font-medium text-white p-[10px] rounded-md my-1 cursor-pointer transition-colors;
+    background-color: var(--app-primary);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.06);
+  }
+
+  .btn-success {
+    @apply text-sm font-medium text-white p-[10px] rounded-md my-1 cursor-pointer transition-colors;
+    background-color: var(--app-success);
+  }
+
+  .btn-success:hover {
+    filter: brightness(1.06);
+  }
+
+  .btn-outline {
+    @apply text-sm font-medium rounded-md my-1 cursor-pointer transition-colors;
+    color: var(--app-primary);
+    border: 1px solid var(--app-primary);
+    background-color: transparent;
+    padding: 10px;
+  }
+
+  .btn-outline:hover {
+    background-color: var(--app-blue-soft);
+  }
+
+  .card {
+    @apply p-6 rounded-2xl shadow-md;
+    background-color: var(--app-card-bg);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+  }
+
+  .card-btn {
+    @apply flex items-center gap-3 text-[12px] font-medium px-4 py-1.5 rounded-lg cursor-pointer transition-colors;
+    color: var(--app-text);
+    background-color: var(--app-surface-hover);
+    border: 1px solid var(--app-border);
+  }
+
+  .card-btn:hover {
+    color: var(--app-primary);
+  }
+
+  .form-card {
+    @apply p-6 rounded-lg shadow-md;
+    background-color: var(--app-card-bg);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+  }
+
+  .card-btn-fill {
+    @apply flex items-center gap-3 text-[12px] font-medium px-4 py-1.5 rounded-lg cursor-pointer transition-colors;
+    color: var(--app-text);
+    border: 1px solid var(--app-primary);
+    background-color: transparent;
+  }
+
+  .card-btn-fill:hover {
+    background-color: var(--app-surface-hover);
+  }
+
+  .add-btn {
+    @apply w-full flex items-center justify-center gap-1.5 text-xs md:text-sm font-medium whitespace-nowrap rounded-lg px-4 py-2 cursor-pointer;
+    color: var(--app-primary);
+    background-color: var(--app-surface-hover);
+    border: 1px solid var(--app-border);
+  }
+
+  .download-btn {
+    @apply items-center gap-3 text-xs md:text-[13px] px-2 md:px-3 py-2 rounded cursor-pointer;
+    color: var(--app-text);
+    background-color: var(--app-surface-hover);
+    border: 1px solid var(--app-border);
+  }
+
+  .user-card {
+    @apply p-4 rounded-xl shadow-md;
+    background-color: var(--app-card-bg);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+  }
+}
+
+@layer utilities {
+  .text-primary {
+    color: var(--app-primary) !important;
+  }
+
+  .bg-primary {
+    background-color: var(--app-primary) !important;
+  }
+
+  .border-primary {
+    border-color: var(--app-primary) !important;
+  }
+
+  .text-blue-500,
+  .text-blue-600,
+  .text-blue-700,
+  .text-blue-800 {
+    color: var(--app-primary-blue) !important;
+  }
+
+  .bg-blue-50,
+  .bg-blue-100 {
+    background-color: var(--app-blue-soft) !important;
+  }
+
+  .border-blue-100,
+  .border-blue-200,
+  .border-blue-300 {
+    border-color: color-mix(in srgb, var(--app-primary-blue) 30%, white) !important;
+  }
+
+  .hover\:bg-blue-50:hover,
+  .hover\:bg-blue-100:hover,
+  .hover\:bg-blue-200:hover {
+    background-color: color-mix(in srgb, var(--app-primary-blue) 14%, white) !important;
+  }
+
+  .text-green-500,
+  .text-green-600,
+  .text-green-700,
+  .text-emerald-600,
+  .text-emerald-700 {
+    color: var(--app-primary-green) !important;
+  }
+
+  .bg-green-50,
+  .bg-green-100,
+  .bg-emerald-100,
+  .bg-emerald-50 {
+    background-color: var(--app-green-soft) !important;
+  }
+
+  .bg-green-500,
+  .bg-green-600,
+  .bg-emerald-600 {
+    background-color: var(--app-primary-green) !important;
+  }
+
+  .border-green-100,
+  .border-green-200,
+  .border-emerald-200,
+  .border-emerald-300 {
+    border-color: color-mix(in srgb, var(--app-primary-green) 30%, white) !important;
+  }
+
+  .hover\:bg-emerald-700:hover,
+  .hover\:bg-green-700:hover {
+    background-color: color-mix(in srgb, var(--app-primary-green) 88%, black) !important;
+  }
+
+  .focus\:border-primary:focus {
+    border-color: var(--app-primary) !important;
+  }
+
+  .focus\:ring-primary\/20:focus,
+  .focus\:ring-primary\/30:focus {
+    --tw-ring-color: color-mix(in srgb, var(--app-primary) 20%, transparent) !important;
+  }
+}
+

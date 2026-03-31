@@ -1,0 +1,190 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import moment from "moment";
+import {
+  LuCalendar,
+  LuUsers,
+  LuFolder,
+  LuCircleCheck,
+  LuClock,
+  LuCircleAlert,
+  LuPencil,
+  LuTrash2,
+} from "react-icons/lu";
+
+import AvatarGroup from "../AvatarGroup";
+import ProjectProgressBar from "../ProjectProgressBar";
+import { getStatusColor } from "../../utils/helper";
+
+const ProjectCard = ({
+  project,
+  onClick,
+  onEdit,
+  onDelete,
+  showActions = false,
+}) => {
+  const navigate = useNavigate();
+
+  if (!project) return null;
+
+  const {
+    _id,
+    name,
+    description,
+    status,
+    progress,
+    startDate,
+    endDate,
+    team = [],
+    tasks = [],
+    createdAt,
+  } = project;
+
+  const isActive = status === "Active";
+  const isCompleted = status === "Completed";
+  const isOnHold = status === "On Hold";
+
+  const getStatusIcon = () => {
+    if (isCompleted) return <LuCircleCheck className="text-green-600" />;
+    if (isActive) return <LuClock className="text-blue-600" />;
+    if (isOnHold) return <LuCircleAlert className="text-orange-600" />;
+    return <LuFolder className="text-purple-600" />;
+  };
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick(_id);
+    } else {
+      navigate(`/manager/projects/${_id}`);
+    }
+  };
+
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit(_id);
+    }
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(_id);
+    }
+  };
+
+  const taskSummary = {
+    total: tasks?.length || 0,
+    completed: tasks?.filter((t) => t.status === "Completed").length || 0,
+  };
+
+  return (
+    <div
+      className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer"
+      onClick={handleClick}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              isActive
+                ? "bg-blue-100"
+                : isCompleted
+                  ? "bg-green-100"
+                  : isOnHold
+                    ? "bg-orange-100"
+                    : "bg-purple-100"
+            }`}
+          >
+            {getStatusIcon()}
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-800 line-clamp-1">{name}</h3>
+            <p className="text-xs text-gray-400">
+              Created {moment(createdAt).fromNow()}
+            </p>
+          </div>
+        </div>
+
+        <span
+          className={`text-xs px-2 py-1 rounded-full ${getStatusColor(status)}`}
+        >
+          {status}
+        </span>
+      </div>
+
+      {/* Description */}
+      <p className="text-xs text-gray-500 line-clamp-2 mb-4">
+        {description || "No description provided"}
+      </p>
+
+      {/* Progress */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between text-xs mb-1">
+          <span className="text-gray-500">Progress</span>
+          <span className="font-medium text-gray-700">{progress}%</span>
+        </div>
+        <ProjectProgressBar progress={progress} />
+      </div>
+
+      {/* Details Grid */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <p className="text-xs text-gray-400 mb-1">Timeline</p>
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            <LuCalendar className="text-gray-400" />
+            <span>
+              {startDate ? moment(startDate).format("MMM D") : "N/A"} -{" "}
+              {endDate ? moment(endDate).format("MMM D, YYYY") : "N/A"}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-400 mb-1">Tasks</p>
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            <LuCircleCheck className="text-green-500" />
+            <span>
+              {taskSummary.completed}/{taskSummary.total} completed
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Team */}
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <LuUsers className="text-gray-400" />
+          <span className="text-xs text-gray-500">
+            {team.length} member{team.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        <AvatarGroup users={team} maxVisible={3} size="sm" />
+      </div>
+
+      {/* Action Buttons */}
+      {showActions && (
+        <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t border-gray-100">
+          <button
+            onClick={handleEdit}
+            className="text-xs text-blue-600 hover:text-blue-800 px-3 py-1 rounded hover:bg-blue-50 transition-colors flex items-center gap-1"
+          >
+            <LuPencil className="text-xs" />
+            Edit
+          </button>
+          <button
+            onClick={handleDelete}
+            className="text-xs text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50 transition-colors flex items-center gap-1"
+          >
+            <LuTrash2 className="text-xs" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProjectCard;
