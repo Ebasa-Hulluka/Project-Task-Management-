@@ -49,7 +49,6 @@ const ManageUsers = () => {
     visibleCount: visibleUserCount,
     totalCount: totalUserCount,
     remainingCount: remainingUsersCount,
-    hasMore: hasMoreUsers,
     showMore: showMoreUsers,
   } = useIncrementalList(filteredUsers, 4, [
     filteredUsers.length,
@@ -126,7 +125,7 @@ const ManageUsers = () => {
       window.URL.revokeObjectURL(url);
 
       toast.success("Report downloaded successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to download report");
     }
   };

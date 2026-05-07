@@ -27,6 +27,18 @@ const UserCard = ({
   const [showImagePreview, setShowImagePreview] = useState(false);
   const menuRef = useRef(null);
 
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+        setShowRoleDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
   if (!user) return null;
 
   const {
@@ -130,20 +142,6 @@ const UserCard = ({
       await onRoleChange(_id, newRole);
     }
   };
-
-  useEffect(() => {
-    const handleOutsideClick = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
-        setShowRoleDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, []);
 
   return (
     <div

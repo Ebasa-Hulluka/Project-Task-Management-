@@ -91,6 +91,15 @@ const ProjectDetails = () => {
     }
   }, [id]);
 
+  const filteredTasks = getFilteredTasks();
+  const {
+    visibleItems: visibleTasks,
+    visibleCount: visibleTaskCount,
+    totalCount: totalTaskCount,
+    remainingCount: remainingTasksCount,
+    showMore: showMoreTasks,
+  } = useIncrementalList(filteredTasks, 4, [filteredTasks.length, taskFilter, id]);
+
   if (loading) {
     return (
       <DashboardLayout activeMenu="Project Details">
@@ -110,15 +119,6 @@ const ProjectDetails = () => {
       </DashboardLayout>
     );
   }
-
-  const filteredTasks = getFilteredTasks();
-  const {
-    visibleItems: visibleTasks,
-    visibleCount: visibleTaskCount,
-    totalCount: totalTaskCount,
-    remainingCount: remainingTasksCount,
-    showMore: showMoreTasks,
-  } = useIncrementalList(filteredTasks, 4, [filteredTasks.length, taskFilter, id]);
   const taskStats = {
     total: tasks.length,
     completed: tasks.filter((t) => t.status === "Completed").length,

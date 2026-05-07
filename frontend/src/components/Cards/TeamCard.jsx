@@ -19,7 +19,6 @@ const TeamCard = ({
   showActions = false,
 }) => {
   const [showMembersModal, setShowMembersModal] = useState(false);
-  if (!team) return null;
 
   const {
     _id,
@@ -36,6 +35,8 @@ const TeamCard = ({
   const safeProjectCount =
     typeof projectCount === "number" ? projectCount : projects.length;
   const leadId = useMemo(() => String(lead?._id || lead || ""), [lead]);
+
+  if (!team) return null;
 
   const handleClick = () => {
     if (onClick) {
