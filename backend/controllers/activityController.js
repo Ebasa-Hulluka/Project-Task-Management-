@@ -1,7 +1,7 @@
 const Activity = require("../models/Activity");
 
 // @desc    Get recent activity for logged-in user
-// @route   GET /api/actity
+// @route   GET /api/actty
 // @access  Private
 const getUserActivity = async (req, res) => {
   try {
