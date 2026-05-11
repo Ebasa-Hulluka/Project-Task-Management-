@@ -13,7 +13,7 @@ const {
 
 router.post("/login", loginUser);
 
-// Protected Routes
+// Protected Rotes
 router.get("/profile", protect, getUserProfile);
 router.put("/profile", protect, updateUserProfile);
 router.post("/change-password", protect, changeUserPassword);
