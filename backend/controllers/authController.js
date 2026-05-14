@@ -10,7 +10,7 @@ const generateToken = (userId) => {
 const isValidEmailFormat = (email = "") =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim().toLowerCase());
 
-// @desc    Upload profile image separat
+// @desc    Upload profile image separate
 const uploadProfileImage = async (req, res) => {
   try {
     if (!req.file) {
