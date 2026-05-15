@@ -2,7 +2,7 @@ const User = require("../models/User");
 const Task = require("../models/Task");
 const Team = require("../models/Team");
 
-// @desc    Public landing stat
+// @desc    Public landing sta
 // @route   GET /api/public/landing-stats
 // @access  Public
 const getLandingStats = async (req, res) => {
