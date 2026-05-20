@@ -1,20 +1,51 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 import AuthLayout from "../../components/layouts/AuthLayout";
 import Input from "../../components/Inputs/Input";
-import { validateEmail } from "../../utils/helper";
+import {
+  validateEmail,
+  getLocalStorage,
+  setLocalStorage,
+} from "../../utils/helper";
 import { useUser } from "../../context/userContext";
+
+const SAVED_EMAILS_KEY = "login_saved_emails";
+const EMAIL_DATALIST_ID = "login-email-suggestions";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [savedEmails, setSavedEmails] = useState([]);
 
   const { login } = useUser();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const saved = getLocalStorage(SAVED_EMAILS_KEY);
+    if (Array.isArray(saved)) setSavedEmails(saved);
+  }, []);
+
+  const updateSavedEmails = (newEmail) => {
+    const normalized = newEmail.trim().toLowerCase();
+    if (!normalized) return;
+
+    setSavedEmails((prev) => {
+      const next = [normalized, ...prev.filter((item) => item !== normalized)].slice(0, 8);
+      setLocalStorage(SAVED_EMAILS_KEY, next);
+      return next;
+    });
+  };
+
+  const getDashboardPath = (role) => {
+    if (role === "superAdmin" || role === "admin") return "/admin/dashboard";
+    if (role === "projectManager") return "/manager/dashboard";
+    if (role === "tester") return "/tester/dashboard";
+    return "/member/dashboard";
+  };
 
   // Handle Login Form Submit
   const handleLogin = async (e) => {
@@ -48,16 +79,11 @@ const Login = () => {
       const result = await login(normalizedEmail, password);
 
       if (result.success) {
+        updateSavedEmails(normalizedEmail);
         toast.success("Login successful!");
 
         // Redirect based on role
-        if (result.user.role === "superAdmin" || result.user.role === "admin") {
-          navigate("/admin/dashboard");
-        } else if (result.user.role === "projectManager") {
-          navigate("/manager/dashboard");
-        } else {
-          navigate("/member/dashboard");
-        }
+        navigate(getDashboardPath(result.user.role), { replace: true });
       } else {
         const normalizedError = (result.error || "").toLowerCase();
         let message = result.error;
@@ -91,7 +117,7 @@ const Login = () => {
 
         <form onSubmit={handleLogin} className="space-y-5">
           {/* Email Field */}
-          <div>
+          <div className="relative">
             <Input
               value={email}
               onChange={(e) => {
@@ -102,10 +128,18 @@ const Login = () => {
               placeholder="ebasahuluka1@gmail.com"
               type="email"
               name="email"
+              list={savedEmails.length ? EMAIL_DATALIST_ID : undefined}
               autoComplete="email"
               disabled={isLoading}
               required
             />
+            {savedEmails.length > 0 && (
+              <datalist id={EMAIL_DATALIST_ID}>
+                {savedEmails.map((savedEmail) => (
+                  <option key={savedEmail} value={savedEmail} />
+                ))}
+              </datalist>
+            )}
             {error.email && (
               <p className="text-red-500 text-xs mt-1">{error.email}</p>
             )}
@@ -123,7 +157,7 @@ const Login = () => {
               placeholder="Enter your password"
               type="password"
               name="password"
-              autoComplete="current-password"
+              autoComplete="off"
               disabled={isLoading}
               required
             />
@@ -136,7 +170,7 @@ const Login = () => {
           <div className="text-right">
             <button
               type="button"
-              onClick={() => toast.success("Password reset link sent!")}
+              onClick={() => navigate("/forgot-password")}
               className="text-sm text-primary hover:underline focus:outline-none"
             >
               Forgot Password?

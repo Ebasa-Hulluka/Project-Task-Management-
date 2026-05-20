@@ -42,7 +42,7 @@ axiosInstance.interceptors.response.use(
           localStorage.removeItem("token");
           localStorage.removeItem("user");
           if (window.location.pathname !== "/") {
-            window.location.href = "/";
+            window.location.replace("/");
           }
         }
       } else if (error.response.status === 403) {

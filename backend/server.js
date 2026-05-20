@@ -21,6 +21,7 @@ const activityRoutes = require("./routes/activityRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const { initSocket } = require("./socket/chatSocket");
 const { ensureRoleHierarchy } = require("./utils/roleBootstrapService");
+const { corsOptions } = require("./utils/corsConfig");
 
 const app = express();
 const server = http.createServer(app);
@@ -31,13 +32,7 @@ if (!fs.existsSync(uploadsDir)) {
   console.log("Created uploads directory at:", uploadsDir);
 }
 
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -60,7 +55,69 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/chat", chatRoutes);
 
-const PORT = process.env.PORT || 5000;
+let PORT = Number(process.env.PORT) || 5000;
+
+const logRoutes = (port) => {
+  console.log(`Server running on port ${port}`);
+  console.log(
+    `Uploads accessible at: http://localhost:${port}/uploads/filename.jpg`,
+  );
+
+  console.log("\n=== Available API Routes ===");
+  console.log("Auth Routes: /api/auth");
+  console.log("User Routes: /api/users");
+  console.log("Task Routes: /api/tasks");
+  console.log("Project Routes: /api/projects");
+  console.log("Team Routes: /api/teams");
+  console.log("Report Routes: /api/reports");
+  console.log("Public Routes: /api/public");
+  console.log("Notification Routes: /api/notifications");
+  console.log("Activity Routes: /api/activity");
+  console.log("Chat Routes: /api/chat");
+  console.log("===========================\n");
+};
+
+const listen = (startingPort) =>
+  new Promise((resolve, reject) => {
+    const MAX_RETRIES = 20;
+    let attempt = 0;
+    let port = startingPort;
+
+    const cleanupListeners = () => {
+      server.off("error", handleError);
+      server.off("listening", handleListening);
+    };
+
+    const handleError = (err) => {
+      cleanupListeners();
+
+      // In dev, avoid crashing nodemon when port is busy; try the next one.
+      if (err && err.code === "EADDRINUSE" && attempt < MAX_RETRIES) {
+        attempt += 1;
+        port += 1;
+        PORT = port;
+
+        server.close(() => {
+          server.once("error", handleError);
+          server.once("listening", handleListening);
+          server.listen(port);
+        });
+        return;
+      }
+
+      reject(err);
+    };
+
+    const handleListening = () => {
+      cleanupListeners();
+      logRoutes(port);
+      resolve();
+    };
+
+    server.once("error", handleError);
+    server.once("listening", handleListening);
+    server.listen(port);
+  });
 
 const startServer = async () => {
   try {
@@ -71,28 +128,15 @@ const startServer = async () => {
     console.log("Uploads folder exists:", fs.existsSync(uploadsDir));
 
     initSocket(server);
-
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(
-        `Uploads accessible at: http://localhost:${PORT}/uploads/filename.jpg`,
-      );
-
-      console.log("\n=== Available API Routes ===");
-      console.log("Auth Routes: /api/auth");
-      console.log("User Routes: /api/users");
-      console.log("Task Routes: /api/tasks");
-      console.log("Project Routes: /api/projects");
-      console.log("Team Routes: /api/teams");
-      console.log("Report Routes: /api/reports");
-      console.log("Public Routes: /api/public");
-      console.log("Notification Routes: /api/notifications");
-      console.log("Activity Routes: /api/activity");
-      console.log("Chat Routes: /api/chat");
-      console.log("===========================\n");
-    });
+    await listen(PORT);
   } catch (err) {
-    console.error("Failed to start server due to DB connection error", err);
+    if (err && err.code === "EADDRINUSE") {
+      console.error(
+        `Failed to start server: port ${PORT} is already in use. Stop the other process or set a different PORT in backend/.env.`,
+      );
+    } else {
+      console.error("Failed to start server", err);
+    }
     process.exit(1);
   }
 };

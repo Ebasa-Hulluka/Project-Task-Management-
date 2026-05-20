@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import landingPic from "../../pages/assets/images/landingPic.png";
 
 const Hero = () => {
-  const navigate = useNavigate();
   const [stats, setStats] = useState({
     activeUsers: 0,
     completedTasks: 0,
@@ -50,15 +48,6 @@ const Hero = () => {
               Organize, track, and collaborate all in one powerful task
               management platform.
             </p>
-
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => navigate("/login")}
-                className="bg-primary text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-[#0c4634] transition-colors"
-              >
-                Login
-              </button>
-            </div>
           </div>
 
           <div className="flex justify-center lg:justify-end">

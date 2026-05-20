@@ -47,7 +47,7 @@ const CustomPieChart = ({
   height = 325,
 }) => {
   // Format data if needed
-  const chartData = data
+  const chartData = (Array.isArray(data) ? data : [])
     .map((item) => ({
       name: item.name || item.status || item.category || "Unknown",
       value: item.value || item.count || 0,

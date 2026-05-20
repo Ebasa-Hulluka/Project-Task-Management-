@@ -10,6 +10,7 @@ const DeleteAlert = ({
   itemName = "",
   loading = false,
   confirmLabel = "Delete",
+  loadingLabel = "Deleting...",
   confirmDisabled = false,
   children = null,
 }) => {
@@ -65,7 +66,7 @@ const DeleteAlert = ({
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Deleting...
+                {loadingLabel}
               </>
             ) : (
               <>

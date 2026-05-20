@@ -352,7 +352,7 @@ const Profile = () => {
                     Member since {moment(user.createdAt).format("MMM YYYY")}
                   </span>
                 </div>
-                {user.team && (
+                {user.team && typeof user.team === "object" && (
                   <div className="flex items-center gap-3 text-sm app-text-muted">
                     <LuUsers className="app-text-muted" />
                     <span>Team: {user.team.name || "Not assigned"}</span>

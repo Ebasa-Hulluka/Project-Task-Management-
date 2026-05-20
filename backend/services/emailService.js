@@ -31,8 +31,7 @@ const isMailConfigured = () => {
 
 const getFromAddress = () => {
   const smtpUser = getEnv("SMTP_USER");
-  const mailFrom = getEnv("MAIL_FROM");
-  const sender = smtpUser || mailFrom || "no-reply@taskmanager.local";
+  const sender = smtpUser || "no-reply@taskmanager.local";
   return `Debo Task Manager <${sender}>`;
 };
 
@@ -88,14 +87,6 @@ const getTransporter = async () => {
       }
     } catch (error) {
       const baseMessage = `[EmailService] SMTP verification failed: ${error.message}`;
-      if (
-        getEnv("SMTP_HOST") === "smtp.gmail.com" &&
-        /invalid login|auth|username and password not accepted/i.test(error.message || "")
-      ) {
-        throw new Error(
-          `${baseMessage}. Gmail requires an App Password (not your normal account password).`,
-        );
-      }
       throw new Error(baseMessage);
     }
   }
@@ -128,6 +119,167 @@ const sendMail = async ({ to, subject, text, html }) => {
   }
 };
 
+const escapeHtml = (value) =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const sendNewUserCredentialsEmail = async ({ to, name, password, role }) => {
+  const clientUrl = getEnv("CLIENT_URL", "http://localhost:5174");
+  const displayName = String(name || "there").trim();
+  const userRole = String(role || "user").trim();
+  const username = String(to || "").trim().toLowerCase();
+  const escapedClientUrl = escapeHtml(clientUrl);
+  const escapedDisplayName = escapeHtml(displayName);
+  const escapedUserRole = escapeHtml(userRole);
+  const escapedUsername = escapeHtml(username);
+  const escapedPassword = escapeHtml(password);
+
+  return sendMail({
+    to: username,
+    subject: "Your Debo Task Manager account is ready",
+    text: [
+      `Hello ${displayName},`,
+      "",
+      `An admin created your Debo Task Manager ${userRole} account.`,
+      "",
+      `Website: ${clientUrl}`,
+      `Username: ${username}`,
+      `Password: ${password}`,
+      "",
+      "Use these details to sign in.",
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+        <p>Hello ${escapedDisplayName},</p>
+        <p>An admin created your Debo Task Manager ${escapedUserRole} account.</p>
+        <p>
+          <strong>Website:</strong> <a href="${escapedClientUrl}">${escapedClientUrl}</a><br />
+          <strong>Username:</strong> ${escapedUsername}<br />
+          <strong>Password:</strong> ${escapedPassword}
+        </p>
+        <p>Use these details to sign in.</p>
+      </div>
+    `,
+  });
+};
+
+const sendAccountStatusEmail = async ({ to, name, action, role }) => {
+  const clientUrl = getEnv("CLIENT_URL", "http://localhost:5174");
+  const displayName = String(name || "there").trim();
+  const normalizedAction = String(action || "updated").trim();
+  const userRole = String(role || "user").trim();
+  const username = String(to || "").trim().toLowerCase();
+
+  return sendMail({
+    to: username,
+    subject: `Your Debo Task Manager account was ${normalizedAction}`,
+    text: [
+      `Hello ${displayName},`,
+      "",
+      `Your Debo Task Manager ${userRole} account was ${normalizedAction}.`,
+      "",
+      `Website: ${clientUrl}`,
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+        <p>Hello ${escapeHtml(displayName)},</p>
+        <p>Your Debo Task Manager ${escapeHtml(userRole)} account was ${escapeHtml(normalizedAction)}.</p>
+        <p><strong>Website:</strong> <a href="${escapeHtml(clientUrl)}">${escapeHtml(clientUrl)}</a></p>
+      </div>
+    `,
+  });
+};
+
+const sendRoleChangedEmail = async ({ to, name, previousRole, newRole }) => {
+  const clientUrl = getEnv("CLIENT_URL", "http://localhost:5174");
+  const displayName = String(name || "there").trim();
+  const username = String(to || "").trim().toLowerCase();
+
+  return sendMail({
+    to: username,
+    subject: "Your Debo Task Manager role was changed",
+    text: [
+      `Hello ${displayName},`,
+      "",
+      `Your account role was changed from ${previousRole} to ${newRole}.`,
+      "",
+      `Website: ${clientUrl}`,
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+        <p>Hello ${escapeHtml(displayName)},</p>
+        <p>Your account role was changed from <strong>${escapeHtml(previousRole)}</strong> to <strong>${escapeHtml(newRole)}</strong>.</p>
+        <p><strong>Website:</strong> <a href="${escapeHtml(clientUrl)}">${escapeHtml(clientUrl)}</a></p>
+      </div>
+    `,
+  });
+};
+
+const sendPasswordResetRequestEmail = async ({ to, name }) => {
+  const displayName = String(name || "there").trim();
+  const username = String(to || "").trim().toLowerCase();
+
+  return sendMail({
+    to: username,
+    subject: "Password reset request received",
+    text: [
+      `Hello ${displayName},`,
+      "",
+      "Your password reset request was sent to the super admin.",
+      "You will receive an email when a new password is created for your account.",
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+        <p>Hello ${escapeHtml(displayName)},</p>
+        <p>Your password reset request was sent to the super admin.</p>
+        <p>You will receive an email when a new password is created for your account.</p>
+      </div>
+    `,
+  });
+};
+
+const sendPasswordResetCompletedEmail = async ({ to, name, password }) => {
+  const clientUrl = getEnv("CLIENT_URL", "http://localhost:5174");
+  const displayName = String(name || "there").trim();
+  const username = String(to || "").trim().toLowerCase();
+
+  return sendMail({
+    to: username,
+    subject: "Your Debo Task Manager password was reset",
+    text: [
+      `Hello ${displayName},`,
+      "",
+      "The super admin created a new password for your account.",
+      "",
+      `Website: ${clientUrl}`,
+      `Username: ${username}`,
+      `New password: ${password}`,
+      "",
+      "Use these details to sign in, then change your password from Settings.",
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+        <p>Hello ${escapeHtml(displayName)},</p>
+        <p>The super admin created a new password for your account.</p>
+        <p>
+          <strong>Website:</strong> <a href="${escapeHtml(clientUrl)}">${escapeHtml(clientUrl)}</a><br />
+          <strong>Username:</strong> ${escapeHtml(username)}<br />
+          <strong>New password:</strong> ${escapeHtml(password)}
+        </p>
+        <p>Use these details to sign in, then change your password from Settings.</p>
+      </div>
+    `,
+  });
+};
+
 module.exports = {
-  getTransporter,
+  sendNewUserCredentialsEmail,
+  sendAccountStatusEmail,
+  sendRoleChangedEmail,
+  sendPasswordResetRequestEmail,
+  sendPasswordResetCompletedEmail,
 };

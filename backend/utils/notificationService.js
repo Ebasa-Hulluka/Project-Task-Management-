@@ -88,6 +88,7 @@ const generateOverdueTaskNotifications = async () => {
 };
 
 module.exports = {
+  createNotificationForUsers,
   notifyAdmins,
   notifySystemReportReady,
   generateOverdueTaskNotifications,

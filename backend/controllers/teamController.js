@@ -3,6 +3,30 @@ const User = require("../models/User");
 const mongoose = require("mongoose");
 const { notifyAdmins } = require("../utils/notificationService");
 
+const TEAM_MEMBER_ONLY_MESSAGE = "Only active team members can be selected for a team.";
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const findTeamByNameCaseInsensitive = (trimmedName) =>
+  Team.findOne({ name: new RegExp(`^${escapeRegExp(trimmedName)}$`, "i") });
+
+const validateTeamMemberIds = async (memberIds) => {
+  if (!memberIds.length) return true;
+
+  if (memberIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+    return false;
+  }
+
+  const usersCount = await User.countDocuments({
+    _id: { $in: memberIds },
+    role: "teamMember",
+    isActive: { $ne: false },
+    status: "active",
+  });
+
+  return usersCount === memberIds.length;
+};
+
 // @desc    Create a new team
 // @route   POST /api/teams
 // @access  Private (Admin only)
@@ -10,12 +34,12 @@ const createTeam = async (req, res) => {
   try {
     const { name, description, members, lead } = req.body;
 
-    if (!name) {
+    const trimmedName = typeof name === "string" ? name.trim() : "";
+    if (!trimmedName) {
       return res.status(400).json({ message: "Team name is required" });
     }
 
-    // Check if team name already exists
-    const existingTeam = await Team.findOne({ name });
+    const existingTeam = await findTeamByNameCaseInsensitive(trimmedName);
     if (existingTeam) {
       return res
         .status(400)
@@ -31,14 +55,14 @@ const createTeam = async (req, res) => {
     }
 
     if (memberIds.length > 0) {
-      const usersCount = await User.countDocuments({ _id: { $in: memberIds } });
-      if (usersCount !== memberIds.length) {
-        return res.status(400).json({ message: "One or more selected members are invalid" });
+      const hasValidMembers = await validateTeamMemberIds(memberIds);
+      if (!hasValidMembers) {
+        return res.status(400).json({ message: TEAM_MEMBER_ONLY_MESSAGE });
       }
     }
 
     const team = await Team.create({
-      name,
+      name: trimmedName,
       description,
       members: memberIds,
       lead: lead || null,
@@ -71,6 +95,12 @@ const createTeam = async (req, res) => {
       team: populatedTeam,
     });
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Team with this name already exists",
+      });
+    }
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -148,9 +178,26 @@ const updateTeam = async (req, res) => {
 
     const { name, description, members, lead } = req.body;
 
-    // Update team
-    team.name = name || team.name;
-    team.description = description || team.description;
+    if (name !== undefined && name !== null) {
+      const trimmedName = typeof name === "string" ? name.trim() : "";
+      if (!trimmedName) {
+        return res.status(400).json({ message: "Team name cannot be empty" });
+      }
+      const nameChanged =
+        trimmedName.toLowerCase() !== String(team.name || "").toLowerCase();
+      if (nameChanged) {
+        const duplicate = await findTeamByNameCaseInsensitive(trimmedName);
+        if (duplicate && duplicate._id.toString() !== id) {
+          return res
+            .status(400)
+            .json({ message: "Team with this name already exists" });
+        }
+      }
+      team.name = trimmedName;
+    }
+    if (description !== undefined) {
+      team.description = description;
+    }
     const memberIds = Array.isArray(members)
       ? [...new Set(members.map((id) => id.toString()))]
       : null;
@@ -159,6 +206,13 @@ const updateTeam = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Team lead must be selected from team members" });
+    }
+
+    if (memberIds) {
+      const hasValidMembers = await validateTeamMemberIds(memberIds);
+      if (!hasValidMembers) {
+        return res.status(400).json({ message: TEAM_MEMBER_ONLY_MESSAGE });
+      }
     }
 
     team.lead = lead || (memberIds && !memberIds.includes(team.lead?.toString()) ? null : team.lead);
@@ -189,6 +243,11 @@ const updateTeam = async (req, res) => {
       team: populatedTeam,
     });
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(400).json({
+        message: "Team with this name already exists",
+      });
+    }
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -252,6 +311,10 @@ const addMemberToTeam = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.role !== "teamMember" || user.isActive === false || user.status !== "active") {
+      return res.status(400).json({ message: TEAM_MEMBER_ONLY_MESSAGE });
     }
 
     // Check if user is already in team
@@ -363,6 +426,10 @@ const updateTeamLead = async (req, res) => {
         return res
           .status(400)
           .json({ message: "Team lead must be selected from team members" });
+      }
+      const user = await User.findById(lead);
+      if (!user || user.role !== "teamMember" || user.isActive === false || user.status !== "active") {
+        return res.status(400).json({ message: TEAM_MEMBER_ONLY_MESSAGE });
       }
       team.lead = lead;
     } else {

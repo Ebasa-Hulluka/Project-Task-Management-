@@ -1,6 +1,16 @@
 {
+  "name": "project-task-management",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n BACKEND,FRONTEND -c green,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend run start"
+  },
   "devDependencies": {
     "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
     "postcss": "^8.5.14",
     "tailwindcss": "^4.2.4"
   }

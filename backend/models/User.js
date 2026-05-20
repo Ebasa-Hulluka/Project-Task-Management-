@@ -3,17 +3,24 @@ const mongoose = require("mongoose");
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
     password: { type: String, required: true },
     profileImageUrl: { type: String, default: null },
     themePreference: {
       type: String,
       enum: ["light", "dark", "system"],
-      default: "system",
+      default: "light",
     },
     role: {
       type: String,
-      enum: ["superAdmin", "admin", "projectManager", "teamMember"],
+      enum: ["superAdmin", "admin", "projectManager", "teamMember", "tester"],
       default: "teamMember",
     },
     status: {
@@ -31,5 +38,12 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+UserSchema.pre("validate", function normalizeEmail(next) {
+  if (this.email) {
+    this.email = String(this.email).trim().toLowerCase();
+  }
+  next();
+});
 
 module.exports = mongoose.model("User", UserSchema);

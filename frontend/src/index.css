@@ -10,39 +10,41 @@
 
 :root,
 html[data-theme="light"] {
-  --app-primary-blue: #194f87;
-  --app-primary-green: #0f5841;
+  /* VS Code Light+ inspired */
+  --app-primary-blue: #007acc;
+  --app-primary-green: #2ea043;
   --app-primary: var(--app-primary-blue);
   --app-success: var(--app-primary-green);
-  --app-link: var(--app-primary-blue);
-  --app-blue-soft: #e7eef5;
-  --app-green-soft: #e6f1ed;
+  --app-link: #0066bf;
+  --app-blue-soft: rgba(0, 122, 204, 0.12);
+  --app-green-soft: rgba(46, 160, 67, 0.12);
 
   --app-bg: #ffffff;
-  --app-surface: #ffffff;
-  --app-surface-hover: #f3f4f6;
+  --app-surface: #f3f3f3; /* sidebar / panels */
+  --app-surface-hover: #eaeaea;
   --app-card-bg: #ffffff;
-  --app-border: #e5e7eb;
-  --app-text: #111827;
-  --app-text-muted: #6b7280;
+  --app-border: #e5e5e5;
+  --app-text: #1f1f1f;
+  --app-text-muted: #5f6368;
 }
 
 html[data-theme="dark"] {
-  --app-primary-blue: #2e6aa3;
-  --app-primary-green: #2f7d65;
+  /* VS Code Dark+ inspired */
+  --app-primary-blue: #007acc;
+  --app-primary-green: #89d185;
   --app-primary: var(--app-primary-blue);
-  --app-success: var(--app-primary-green);
-  --app-link: #8bb7e1;
-  --app-blue-soft: rgba(25, 79, 135, 0.24);
-  --app-green-soft: rgba(15, 88, 65, 0.24);
+  --app-success: #2ea043;
+  --app-link: #3794ff;
+  --app-blue-soft: rgba(0, 122, 204, 0.18);
+  --app-green-soft: rgba(46, 160, 67, 0.18);
 
-  --app-bg: #111827;
-  --app-surface: #1f2937;
-  --app-surface-hover: #374151;
-  --app-card-bg: #1f2937;
-  --app-border: #374151;
-  --app-text: #ffffff;
-  --app-text-muted: #d1d5db;
+  --app-bg: #1e1e1e; /* editor background */
+  --app-surface: #252526; /* sidebar/panels */
+  --app-surface-hover: #2a2d2e;
+  --app-card-bg: #252526;
+  --app-border: #3c3c3c;
+  --app-text: #d4d4d4;
+  --app-text-muted: #9da5b4;
 }
 
 /* Compatibility layer for legacy light-only utility classes in dashboard pages */
@@ -81,52 +83,7 @@ html[data-theme="dark"] .hover\:bg-gray-200:hover {
   background-color: var(--app-surface-hover) !important;
 }
 
-/* Keep landing page readable even when global dark mode is enabled. */
-html[data-theme="dark"] .landing-page {
-  background-color: #ffffff !important;
-  color: #111827 !important;
-}
-
-html[data-theme="dark"] .landing-page .bg-white {
-  background-color: #ffffff !important;
-}
-
-html[data-theme="dark"] .landing-page .text-gray-900 {
-  color: #111827 !important;
-}
-
-html[data-theme="dark"] .landing-page .text-gray-800 {
-  color: #1f2937 !important;
-}
-
-html[data-theme="dark"] .landing-page .text-gray-700 {
-  color: #374151 !important;
-}
-
-html[data-theme="dark"] .landing-page .text-gray-600 {
-  color: #4b5563 !important;
-}
-
-html[data-theme="dark"] .landing-page .text-gray-500,
-html[data-theme="dark"] .landing-page .text-gray-400,
-html[data-theme="dark"] .landing-page .text-gray-300 {
-  color: #6b7280 !important;
-}
-
-html[data-theme="dark"] .landing-page .border-gray-50,
-html[data-theme="dark"] .landing-page .border-gray-100,
-html[data-theme="dark"] .landing-page .border-gray-200,
-html[data-theme="dark"] .landing-page .border-gray-300 {
-  border-color: #e5e7eb !important;
-}
-
-html[data-theme="dark"] .landing-page .bg-gray-50 {
-  background-color: #f9fafb !important;
-}
-
-html[data-theme="dark"] .landing-page .bg-gray-100 {
-  background-color: #f3f4f6 !important;
-}
+/* Landing page now follows the global theme tokens. */
 
 @layer base {
   html {

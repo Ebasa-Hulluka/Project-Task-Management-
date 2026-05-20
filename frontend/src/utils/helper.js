@@ -87,6 +87,10 @@ export const getStatusColor = (status) => {
       return "text-green-600 bg-green-100";
     case "in progress":
       return "text-blue-600 bg-blue-100";
+    case "in review":
+      return "text-violet-600 bg-violet-100";
+    case "changes requested":
+      return "text-amber-700 bg-amber-100";
     case "pending":
       return "text-gray-600 bg-gray-100";
     case "planning":

@@ -75,8 +75,8 @@ const Navbar = () => {
                 </a>
               ))}
               <button
-                onClick={() => navigate("/login")}
-                className="text-gray-700 hover:text-primary transition-colors text-base font-semibold px-1 py-1 border-b-2 border-transparent hover:border-primary"
+                onClick={() => navigate("/login", { replace: true })}
+                className="bg-primary text-white px-6 py-2.5 rounded-lg text-base font-semibold shadow-sm hover:bg-[#123f6c] transition-colors"
               >
                 Login
               </button>
@@ -119,10 +119,10 @@ const Navbar = () => {
 
             <button
               onClick={() => {
-                navigate("/login");
+                navigate("/login", { replace: true });
                 closeMenu();
               }}
-              className="text-left text-xl font-semibold text-gray-700 hover:text-primary transition-colors border-l-2 border-transparent hover:border-primary pl-2"
+              className="w-full bg-primary text-white text-lg font-semibold rounded-lg px-5 py-3 text-center shadow-sm hover:bg-[#123f6c] transition-colors"
             >
               Login
             </button>

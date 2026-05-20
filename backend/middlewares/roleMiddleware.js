@@ -6,6 +6,9 @@ const normalizeRole = (role = "") => {
   if (value === "teammember" || value === "team_member" || value === "member") {
     return "teamMember";
   }
+  if (value === "tester" || value === "qa" || value === "quality_assurance") {
+    return "tester";
+  }
   if (value === "superadmin" || value === "super_admin") {
     return "superAdmin";
   }

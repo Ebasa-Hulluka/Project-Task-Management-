@@ -21,6 +21,7 @@ import ProjectProgressBar from "../../components/ProjectProgressBar";
 import IncrementalListControls from "../../components/IncrementalListControls";
 import useIncrementalList from "../../hooks/useIncrementalList";
 import { getStatusColor } from "../../utils/helper";
+import { getProjectTeamDisplay } from "../../utils/projectTeam";
 
 const ProjectDetails = () => {
   const { id } = useParams();
@@ -126,6 +127,10 @@ const ProjectDetails = () => {
     pending: tasks.filter((t) => t.status === "Pending").length,
   };
 
+  const { teamNames, users: teamMemberUsers } = getProjectTeamDisplay(
+    project.team,
+  );
+
   return (
     <DashboardLayout activeMenu="Project Details">
       <div className="my-5">
@@ -193,12 +198,27 @@ const ProjectDetails = () => {
               <div className="p-2 bg-gray-100 rounded-lg">
                 <LuUsers className="text-gray-600" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Team Members</p>
-                <AvatarGroup
-                  avatars={project.team?.map((m) => m.profileImageUrl) || []}
-                  maxVisible={5}
-                />
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">Team</p>
+                <p
+                  className="text-sm font-medium text-gray-900 mt-0.5 truncate"
+                  title={teamNames.join(" · ")}
+                >
+                  {teamNames.length > 0
+                    ? teamNames.join(" · ")
+                    : "No team assigned"}
+                </p>
+                <div className="mt-2">
+                  {teamMemberUsers.length > 0 ? (
+                    <AvatarGroup
+                      users={teamMemberUsers}
+                      maxVisible={5}
+                      showTooltip
+                    />
+                  ) : (
+                    <p className="text-xs text-gray-400">No members</p>
+                  )}
+                </div>
               </div>
             </div>
 

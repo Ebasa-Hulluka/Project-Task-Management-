@@ -1,7 +1,10 @@
 const User = require("../models/User");
+const PasswordResetRequest = require("../models/PasswordResetRequest");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { logActivity } = require("../utils/activityLogger");
+const { createNotificationForUsers } = require("../utils/notificationService");
+const { sendPasswordResetRequestEmail } = require("../services/emailService");
 // Generate JWT Token
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -9,6 +12,14 @@ const generateToken = (userId) => {
 
 const isValidEmailFormat = (email = "") =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim().toLowerCase());
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const findUserByEmail = (email) =>
+  User.findOne({
+    email: new RegExp(`^${escapeRegExp(String(email || "").trim())}$`, "i"),
+  });
 
 // @desc    Upload profile image separately
 const uploadProfileImage = async (req, res) => {
@@ -132,9 +143,9 @@ const updateUserProfile = async (req, res) => {
     const isPasswordChanged = Boolean(requestedNewPassword);
 
     if (isEmailChanged) {
-      const existingUser = await User.findOne({ email: normalizedEmail });
+      const existingUser = await findUserByEmail(normalizedEmail);
       if (existingUser && existingUser._id.toString() !== user._id.toString()) {
-        return res.status(400).json({ message: "Email already in use" });
+        return res.status(400).json({ message: "There is already an account by this email." });
       }
     }
 
@@ -196,6 +207,12 @@ const updateUserProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Update profile error:", error);
+    if (
+      error?.code === 11000 &&
+      (error?.keyPattern?.email || String(error?.message || "").includes("email"))
+    ) {
+      return res.status(400).json({ message: "There is already an account by this email." });
+    }
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -238,10 +255,69 @@ const changeUserPassword = async (req, res) => {
   }
 };
 
+const requestPasswordReset = async (req, res) => {
+  try {
+    const normalizedEmail = String(req.body?.email || "").trim().toLowerCase();
+
+    if (!isValidEmailFormat(normalizedEmail)) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (user) {
+      const existingPending = await PasswordResetRequest.findOne({
+        user: user._id,
+        status: "pending",
+      });
+
+      if (!existingPending) {
+        await PasswordResetRequest.create({
+          user: user._id,
+          email: user.email,
+          status: "pending",
+        });
+      }
+
+      const superAdmins = await User.find({
+        role: "superAdmin",
+        isActive: true,
+      }).select("_id");
+
+      await createNotificationForUsers(
+        superAdmins.map((admin) => admin._id.toString()),
+        {
+          type: "password_reset_requested",
+          message: `Password reset requested by ${user.name} (${user.email}) at ${new Date().toLocaleString()}`,
+          link: "/admin/users",
+        },
+      );
+
+      try {
+        await sendPasswordResetRequestEmail({
+          to: user.email,
+          name: user.name,
+        });
+      } catch (error) {
+        console.error("[AuthController] Failed to email reset request confirmation:", error.message);
+      }
+    }
+
+    res.status(200).json({
+      message:
+        "If this email belongs to an account, the super admin will receive your password reset request.",
+    });
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   loginUser,
   getUserProfile,
   updateUserProfile,
   uploadProfileImage,
   changeUserPassword,
+  requestPasswordReset,
 };

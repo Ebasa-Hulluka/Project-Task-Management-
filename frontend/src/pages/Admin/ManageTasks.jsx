@@ -34,6 +34,8 @@ const ManageTasks = () => {
           { label: "All", count: statusSummary.all || tasks.length || 0 },
           { label: "Pending", count: statusSummary.pendingTasks || 0 },
           { label: "In Progress", count: statusSummary.inProgressTasks || 0 },
+          { label: "In Review", count: statusSummary.inReviewTasks || 0 },
+          { label: "Changes Requested", count: statusSummary.changesRequestedTasks || 0 },
           { label: "Completed", count: statusSummary.completedTasks || 0 },
         ]);
       }

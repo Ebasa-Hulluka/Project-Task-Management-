@@ -9,9 +9,11 @@ const {
   updateUserProfile,
   uploadProfileImage,
   changeUserPassword,
+  requestPasswordReset,
 } = require("../controllers/authController");
 
 router.post("/login", loginUser);
+router.post("/forgot-password", requestPasswordReset);
 
 // Protected Routes
 router.get("/profile", protect, getUserProfile);

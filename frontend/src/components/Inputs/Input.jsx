@@ -9,6 +9,7 @@ const Input = ({
   placeholder,
   type = "text",
   name,
+  list,
   error,
   success,
   disabled = false,
@@ -81,6 +82,7 @@ const Input = ({
         <input
           type={getInputType()}
           name={name}
+          list={list}
           value={value || ""}
           onChange={onChange}
           onFocus={handleFocus}

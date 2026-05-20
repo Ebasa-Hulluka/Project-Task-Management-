@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { LuFileSpreadsheet, LuFilter, LuPlus, LuSearch } from "react-icons/lu";
+import { LuFileSpreadsheet, LuFilter, LuKeyRound, LuPlus, LuSearch } from "react-icons/lu";
 
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import { useUser } from "../../context/userContext";
@@ -29,11 +29,18 @@ const ManageUsers = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [emailQuery, setEmailQuery] = useState("");
   const [deleteTargetUser, setDeleteTargetUser] = useState(null);
+  const [deactivateTargetUser, setDeactivateTargetUser] = useState(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deletePasswordError, setDeletePasswordError] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createErrors, setCreateErrors] = useState({});
+  const [resetRequestsOpen, setResetRequestsOpen] = useState(false);
+  const [resetRequests, setResetRequests] = useState([]);
+  const [resetRequestsLoading, setResetRequestsLoading] = useState(false);
+  const [resetPasswords, setResetPasswords] = useState({});
+  const [resetPasswordErrors, setResetPasswordErrors] = useState({});
+  const [activeResetRequestId, setActiveResetRequestId] = useState(null);
   const [createForm, setCreateForm] = useState({
     name: "",
     email: "",
@@ -59,6 +66,7 @@ const ManageUsers = () => {
 
   const roleOptions = [
     { value: "teamMember", label: "Team Member" },
+    { value: "tester", label: "Tester" },
     { value: "projectManager", label: "Project Manager" },
     { value: "admin", label: "Admin" },
   ];
@@ -149,6 +157,27 @@ const ManageUsers = () => {
     setDeleteTargetUser(target || { _id: userId });
   };
 
+  const handleDeactivateUser = async (userId) => {
+    const target = allUsers.find((item) => item._id === userId) || null;
+    setDeactivateTargetUser(target || { _id: userId });
+  };
+
+  const confirmDeactivateUser = async () => {
+    if (!deactivateTargetUser?._id) return;
+
+    try {
+      setStatusActionUserId(deactivateTargetUser._id);
+      await axiosInstance.post(API_PATHS.USERS.DEACTIVATE_ACCOUNT(deactivateTargetUser._id));
+      toast.success("User deactivated successfully");
+      setDeactivateTargetUser(null);
+      getUsers({ role: roleFilter, status: statusFilter });
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to deactivate user");
+    } finally {
+      setStatusActionUserId(null);
+    }
+  };
+
   const confirmDeleteUser = async () => {
     if (!deleteTargetUser?._id) return;
 
@@ -188,6 +217,60 @@ const ManageUsers = () => {
       toast.error(error.response?.data?.message || "Failed to reactivate user");
     } finally {
       setStatusActionUserId(null);
+    }
+  };
+
+  const getPasswordResetRequests = async () => {
+    if (!isSuperAdmin) return;
+
+    try {
+      setResetRequestsLoading(true);
+      const response = await axiosInstance.get(API_PATHS.USERS.GET_PASSWORD_RESET_REQUESTS);
+      setResetRequests(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to fetch password requests");
+    } finally {
+      setResetRequestsLoading(false);
+    }
+  };
+
+  const openPasswordRequests = () => {
+    setResetRequestsOpen(true);
+    setResetPasswords({});
+    setResetPasswordErrors({});
+    getPasswordResetRequests();
+  };
+
+  const handleCompletePasswordReset = async (requestId) => {
+    const newPassword = String(resetPasswords[requestId] || "");
+
+    if (newPassword.length < 6) {
+      setResetPasswordErrors((prev) => ({
+        ...prev,
+        [requestId]: "Password must be at least 6 characters",
+      }));
+      return;
+    }
+
+    try {
+      setActiveResetRequestId(requestId);
+      setResetPasswordErrors((prev) => ({ ...prev, [requestId]: "" }));
+      await axiosInstance.post(API_PATHS.USERS.COMPLETE_PASSWORD_RESET_REQUEST(requestId), {
+        newPassword,
+      });
+      toast.success("New password emailed to user");
+      setResetPasswords((prev) => {
+        const next = { ...prev };
+        delete next[requestId];
+        return next;
+      });
+      getPasswordResetRequests();
+    } catch (error) {
+      const message = error.response?.data?.message || "Failed to complete password reset";
+      setResetPasswordErrors((prev) => ({ ...prev, [requestId]: message }));
+      toast.error(message);
+    } finally {
+      setActiveResetRequestId(null);
     }
   };
 
@@ -247,8 +330,13 @@ const ManageUsers = () => {
       resetCreateForm();
       getUsers({ role: roleFilter, status: statusFilter });
     } catch (error) {
-      const message = error.response?.data?.message || "Failed to create user account";
-      const isDuplicateEmailMessage = message.toLowerCase().includes("email already exists");
+      const message =
+        error.response?.data?.message || error.message || "Failed to create user account";
+      const normalizedMessage = message.toLowerCase();
+      const isDuplicateEmailMessage =
+        normalizedMessage.includes("email already exists") ||
+        normalizedMessage.includes("already an account with this email") ||
+        normalizedMessage.includes("already an account by this email");
 
       if (isDuplicateEmailMessage) {
         setCreateErrors((prev) => ({
@@ -256,6 +344,7 @@ const ManageUsers = () => {
           email: message,
           form: "",
         }));
+        toast.error(message);
         return;
       }
 
@@ -287,6 +376,16 @@ const ManageUsers = () => {
               <LuPlus className="text-lg" />
               Create User
             </button>
+
+            {isSuperAdmin && (
+              <button
+                className="btn-outline flex items-center gap-2"
+                onClick={openPasswordRequests}
+              >
+                <LuKeyRound className="text-lg" />
+                Password Requests
+              </button>
+            )}
 
             <button
               className="btn-outline flex items-center gap-1"
@@ -337,6 +436,7 @@ const ManageUsers = () => {
                   <option value="admin">Admin</option>
                   <option value="projectManager">Project Manager</option>
                   <option value="teamMember">Team Member</option>
+                  <option value="tester">Tester</option>
                 </select>
               </div>
 
@@ -369,6 +469,7 @@ const ManageUsers = () => {
                   user={user}
                   onRoleChange={handleRoleChange}
                   onDelete={handleDeleteUser}
+                  onDeactivate={handleDeactivateUser}
                   onReactivate={handleReactivateUser}
                   statusActionLoading={statusActionUserId === user._id}
                   showActions={true}
@@ -397,27 +498,40 @@ const ManageUsers = () => {
         {!loading && allUsers.length > 0 && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-medium mb-2">Summary</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+            <div className="flex flex-nowrap gap-3 overflow-x-auto pb-1">
               {[
                 { label: "Total Users", value: summary?.totalUsers ?? allUsers.length },
                 { label: "Super Admins", value: summary?.byRole?.superAdmin ?? allUsers.filter((u) => u.role === "superAdmin").length },
                 { label: "Admins", value: summary?.byRole?.admin ?? allUsers.filter((u) => u.role === "admin").length },
                 { label: "Project Managers", value: summary?.byRole?.projectManager ?? allUsers.filter((u) => u.role === "projectManager").length },
                 { label: "Team Members", value: summary?.byRole?.teamMember ?? allUsers.filter((u) => u.role === "teamMember").length },
+                { label: "Testers", value: summary?.byRole?.tester ?? allUsers.filter((u) => u.role === "tester").length },
                 { label: "Deactivated", value: summary?.byStatus?.deactivated ?? allUsers.filter((u) => u.isActive === false).length },
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="bg-white border border-gray-200 rounded-lg p-2.5 min-h-19 min-w-0 flex flex-col justify-between"
+                  className="bg-white border border-gray-200 rounded-lg p-4 min-h-[90px] min-w-[180px] flex-shrink-0 flex flex-col justify-between"
                 >
                   <p className="text-xs text-gray-500 leading-4">{item.label}</p>
-                  <p className="text-xl font-semibold leading-none">{item.value}</p>
+                  <p className="text-2xl font-semibold leading-none">{item.value}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
+
+      <DeleteAlert
+        isOpen={Boolean(deactivateTargetUser)}
+        onClose={() => setDeactivateTargetUser(null)}
+        onConfirm={confirmDeactivateUser}
+        title="Deactivate User"
+        message="This user will no longer be able to log in until an admin reactivates the account."
+        itemName={deactivateTargetUser?.email || deactivateTargetUser?.name || ""}
+        loading={statusActionUserId === deactivateTargetUser?._id}
+        confirmLabel="Deactivate User"
+        loadingLabel="Deactivating..."
+      />
 
       <DeleteAlert
         isOpen={Boolean(deleteTargetUser)}
@@ -456,6 +570,87 @@ const ManageUsers = () => {
           )}
         </div>
       </DeleteAlert>
+
+      <Modal
+        isOpen={resetRequestsOpen}
+        onClose={() => {
+          if (activeResetRequestId) return;
+          setResetRequestsOpen(false);
+          setResetPasswords({});
+          setResetPasswordErrors({});
+        }}
+        title="Password Reset Requests"
+        size="lg"
+      >
+        {resetRequestsLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          </div>
+        ) : resetRequests.length > 0 ? (
+          <div className="space-y-3">
+            {resetRequests.map((request) => {
+              const requestedUser = request.user || {};
+              const requestId = request._id;
+              return (
+                <div
+                  key={requestId}
+                  className="border border-gray-200 rounded-lg p-4"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {requestedUser.name || request.email}
+                      </p>
+                      <p className="text-sm text-gray-500">{request.email}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Role: {requestedUser.role || "N/A"} | Requested:{" "}
+                        {request.createdAt
+                          ? new Date(request.createdAt).toLocaleString()
+                          : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="w-full lg:w-80">
+                      <Input
+                        value={resetPasswords[requestId] || ""}
+                        onChange={(event) => {
+                          setResetPasswords((prev) => ({
+                            ...prev,
+                            [requestId]: event.target.value,
+                          }));
+                          setResetPasswordErrors((prev) => ({
+                            ...prev,
+                            [requestId]: "",
+                          }));
+                        }}
+                        label="New Password"
+                        placeholder="At least 6 characters"
+                        type="password"
+                        disabled={activeResetRequestId === requestId}
+                        error={resetPasswordErrors[requestId]}
+                      />
+                      <button
+                        type="button"
+                        className="btn-primary w-full mt-3"
+                        onClick={() => handleCompletePasswordReset(requestId)}
+                        disabled={activeResetRequestId === requestId}
+                      >
+                        {activeResetRequestId === requestId
+                          ? "Sending..."
+                          : "Set Password & Email"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <p className="text-gray-500">No pending password reset requests.</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={createModalOpen}

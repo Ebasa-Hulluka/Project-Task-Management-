@@ -19,6 +19,10 @@ const Progress = ({
           return "bg-green-500";
         case "In Progress":
           return "bg-blue-500";
+        case "In Review":
+          return "bg-violet-500";
+        case "Changes Requested":
+          return "bg-amber-500";
         case "Pending":
           return "bg-yellow-500";
         default:
@@ -38,6 +42,9 @@ const Progress = ({
     if (status === "Completed")
       return <LuCircleCheck className="text-green-500" />;
     if (status === "In Progress") return <LuClock className="text-blue-500" />;
+    if (status === "In Review") return <LuClock className="text-violet-500" />;
+    if (status === "Changes Requested")
+      return <LuCircleAlert className="text-amber-500" />;
     if (status === "Pending") return <LuClock className="text-yellow-500" />;
     return null;
   };

@@ -13,6 +13,79 @@ import { API_PATHS } from "../../utils/apiPaths";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 
+const emptyTaskReport = {
+  summary: {
+    total: 0,
+    completed: 0,
+    pending: 0,
+    inProgress: 0,
+  },
+  distribution: [],
+  priorityLevels: [],
+};
+
+const emptyUserReport = {
+  total: 0,
+  activeToday: 0,
+  teams: 0,
+  byRole: {
+    superAdmin: 0,
+    admin: 0,
+    projectManager: 0,
+    teamMember: 0,
+  },
+};
+
+const emptyProjectReport = {
+  total: 0,
+  completionRate: 0,
+  byStatus: {
+    active: 0,
+    planning: 0,
+    completed: 0,
+    onHold: 0,
+  },
+};
+
+const normalizeReportData = (type, data = {}) => {
+  if (type === "tasks") {
+    return {
+      ...emptyTaskReport,
+      ...data,
+      summary: {
+        ...emptyTaskReport.summary,
+        ...(data?.summary || {}),
+      },
+      distribution: Array.isArray(data?.distribution)
+        ? data.distribution
+        : emptyTaskReport.distribution,
+      priorityLevels: Array.isArray(data?.priorityLevels)
+        ? data.priorityLevels
+        : emptyTaskReport.priorityLevels,
+    };
+  }
+
+  if (type === "users") {
+    return {
+      ...emptyUserReport,
+      ...data,
+      byRole: {
+        ...emptyUserReport.byRole,
+        ...(data?.byRole || {}),
+      },
+    };
+  }
+
+  return {
+    ...emptyProjectReport,
+    ...data,
+    byStatus: {
+      ...emptyProjectReport.byStatus,
+      ...(data?.byStatus || {}),
+    },
+  };
+};
+
 const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
@@ -40,8 +113,7 @@ const Reports = () => {
       if (type === "projects") endpoint = API_PATHS.REPORTS.PROJECTS;
 
       const response = await axiosInstance.get(endpoint, { params });
-      const payload = response?.data || {};
-      setReportData(payload);
+      setReportData(normalizeReportData(type, response?.data));
     } catch (error) {
       console.error("Error fetching report data:", error);
       const message =
@@ -50,7 +122,7 @@ const Reports = () => {
         "Failed to fetch report data";
       setError(message);
       toast.error(message);
-      setReportData(null);
+      setReportData(normalizeReportData(type));
     } finally {
       setLoading(false);
     }
@@ -113,6 +185,14 @@ const Reports = () => {
   }, [reportType]);
 
   const COLORS = ["#0f5841", "#2f7d65", "#194f87", "#2e6aa3"];
+  const activeReportData = normalizeReportData(reportType, reportData);
+
+  const handleReportTypeChange = (type) => {
+    setError("");
+    setLoading(true);
+    setReportData(normalizeReportData(type));
+    setReportType(type);
+  };
 
   return (
     <DashboardLayout activeMenu="Reports">
@@ -188,7 +268,7 @@ const Reports = () => {
                   ? "border-primary text-primary"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
-              onClick={() => setReportType("tasks")}
+              onClick={() => handleReportTypeChange("tasks")}
             >
               Tasks Report
             </button>
@@ -198,7 +278,7 @@ const Reports = () => {
                   ? "border-primary text-primary"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
-              onClick={() => setReportType("users")}
+              onClick={() => handleReportTypeChange("users")}
             >
               Users Report
             </button>
@@ -208,7 +288,7 @@ const Reports = () => {
                   ? "border-primary text-primary"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
-              onClick={() => setReportType("projects")}
+              onClick={() => handleReportTypeChange("projects")}
             >
               Projects Report
             </button>
@@ -227,32 +307,32 @@ const Reports = () => {
         ) : (
           <div className="mt-6">
             {/* Tasks Report */}
-            {reportType === "tasks" && reportData && (
+            {reportType === "tasks" && activeReportData && (
               <div className="space-y-6">
                 {/* Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-500">Total Tasks</p>
                     <p className="text-2xl font-semibold mt-1">
-                      {reportData.summary.total}
+                      {activeReportData.summary.total}
                     </p>
                   </div>
                   <div className="bg-green-50 p-6 rounded-lg">
                     <p className="text-sm text-green-600">Completed</p>
                     <p className="text-2xl font-semibold text-green-700 mt-1">
-                      {reportData.summary.completed}
+                      {activeReportData.summary.completed}
                     </p>
                   </div>
                   <div className="bg-yellow-50 p-6 rounded-lg">
                     <p className="text-sm text-yellow-600">Pending</p>
                     <p className="text-2xl font-semibold text-yellow-700 mt-1">
-                      {reportData.summary.pending}
+                      {activeReportData.summary.pending}
                     </p>
                   </div>
                   <div className="bg-blue-50 p-6 rounded-lg">
                     <p className="text-sm text-blue-600">In Progress</p>
                     <p className="text-2xl font-semibold text-blue-700 mt-1">
-                      {reportData.summary.inProgress}
+                      {activeReportData.summary.inProgress}
                     </p>
                   </div>
                 </div>
@@ -265,7 +345,7 @@ const Reports = () => {
                       Task Distribution
                     </h3>
                     <CustomPieChart
-                      data={reportData.distribution}
+                      data={activeReportData.distribution}
                       colors={COLORS}
                     />
                   </div>
@@ -275,7 +355,7 @@ const Reports = () => {
                       <LuChartBar className="text-primary" />
                       Priority Levels
                     </h3>
-                    <CustomBarChart data={reportData.priorityLevels} />
+                    <CustomBarChart data={activeReportData.priorityLevels} />
                   </div>
                 </div>
 
@@ -297,25 +377,25 @@ const Reports = () => {
             )}
 
             {/* Users Report */}
-            {reportType === "users" && reportData && (
+            {reportType === "users" && activeReportData && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-500">Total Users</p>
                     <p className="text-2xl font-semibold mt-1">
-                      {reportData.total || 0}
+                      {activeReportData.total || 0}
                     </p>
                   </div>
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-500">Active Today</p>
                     <p className="text-2xl font-semibold mt-1">
-                      {reportData.activeToday || 0}
+                      {activeReportData.activeToday || 0}
                     </p>
                   </div>
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-500">Teams</p>
                     <p className="text-2xl font-semibold mt-1">
-                      {reportData.teams || 0}
+                      {activeReportData.teams || 0}
                     </p>
                   </div>
                 </div>
@@ -326,25 +406,25 @@ const Reports = () => {
                     <div className="flex items-center justify-between">
                       <span>Super Admins</span>
                       <span className="font-semibold">
-                        {reportData.byRole?.superAdmin || 0}
+                        {activeReportData.byRole?.superAdmin || 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Admins</span>
                       <span className="font-semibold">
-                        {reportData.byRole?.admin || 0}
+                        {activeReportData.byRole?.admin || 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Project Managers</span>
                       <span className="font-semibold">
-                        {reportData.byRole?.projectManager || 0}
+                        {activeReportData.byRole?.projectManager || 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Team Members</span>
                       <span className="font-semibold">
-                        {reportData.byRole?.teamMember || 0}
+                        {activeReportData.byRole?.teamMember || 0}
                       </span>
                     </div>
                   </div>
@@ -365,31 +445,31 @@ const Reports = () => {
             )}
 
             {/* Projects Report */}
-            {reportType === "projects" && reportData && (
+            {reportType === "projects" && activeReportData && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-500">Total Projects</p>
                     <p className="text-2xl font-semibold mt-1">
-                      {reportData.total || 0}
+                      {activeReportData.total || 0}
                     </p>
                   </div>
                   <div className="bg-blue-50 p-6 rounded-lg">
                     <p className="text-sm text-blue-600">Active</p>
                     <p className="text-2xl font-semibold text-blue-700 mt-1">
-                      {reportData.byStatus?.active || 0}
+                      {activeReportData.byStatus?.active || 0}
                     </p>
                   </div>
                   <div className="bg-green-50 p-6 rounded-lg">
                     <p className="text-sm text-green-600">Completed</p>
                     <p className="text-2xl font-semibold text-green-700 mt-1">
-                      {reportData.byStatus?.completed || 0}
+                      {activeReportData.byStatus?.completed || 0}
                     </p>
                   </div>
                   <div className="bg-purple-50 p-6 rounded-lg">
                     <p className="text-sm text-purple-600">Completion Rate</p>
                     <p className="text-2xl font-semibold text-purple-700 mt-1">
-                      {reportData.completionRate || 0}%
+                      {activeReportData.completionRate || 0}%
                     </p>
                   </div>
                 </div>
@@ -400,25 +480,25 @@ const Reports = () => {
                     <div className="flex items-center justify-between">
                       <span>Active</span>
                       <span className="font-semibold">
-                        {reportData.byStatus?.active || 0}
+                        {activeReportData.byStatus?.active || 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Planning</span>
                       <span className="font-semibold">
-                        {reportData.byStatus?.planning || 0}
+                        {activeReportData.byStatus?.planning || 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Completed</span>
                       <span className="font-semibold">
-                        {reportData.byStatus?.completed || 0}
+                        {activeReportData.byStatus?.completed || 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>On Hold</span>
                       <span className="font-semibold">
-                        {reportData.byStatus?.onHold || 0}
+                        {activeReportData.byStatus?.onHold || 0}
                       </span>
                     </div>
                   </div>

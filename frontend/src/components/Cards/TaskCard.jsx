@@ -41,8 +41,12 @@ const TaskCard = ({
     projectId,
   } = task;
 
-  const completedTodos = todoChecklist.filter((item) => item.completed).length;
-  const totalTodos = todoChecklist.length;
+  const safeAssignedTo = Array.isArray(assignedTo) ? assignedTo : [];
+  const safeAttachments = Array.isArray(attachments) ? attachments : [];
+  const safeTodoChecklist = Array.isArray(todoChecklist) ? todoChecklist : [];
+
+  const completedTodos = safeTodoChecklist.filter((item) => item.completed).length;
+  const totalTodos = safeTodoChecklist.length;
 
   const isOverdue = () => {
     if (!dueDate || status === "Completed") return false;
@@ -146,6 +150,10 @@ const TaskCard = ({
         className={`px-4 border-l-[3px] ${
           status === "In Progress"
             ? "border-cyan-500"
+            : status === "In Review"
+              ? "border-violet-500"
+              : status === "Changes Requested"
+                ? "border-amber-500"
             : status === "Completed"
               ? "border-lime-500"
               : "border-violet-500"
@@ -202,22 +210,22 @@ const TaskCard = ({
         </div>
 
         {/* Assigned Users */}
-        {assignedTo.length > 0 && (
+        {safeAssignedTo.length > 0 && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <LuUsers className="text-gray-400" />
               <span className="text-xs text-gray-500">Assigned to:</span>
             </div>
-            <AvatarGroup users={assignedTo} maxVisible={3} size="sm" />
+            <AvatarGroup users={safeAssignedTo} maxVisible={3} size="sm" />
           </div>
         )}
 
         {/* Attachments */}
-        {attachments.length > 0 && (
+        {safeAttachments.length > 0 && (
           <div className="flex items-center gap-2 bg-blue-50/50 px-3 py-2 rounded-lg">
             <LuPaperclip className="text-blue-500 text-xs" />
             <span className="text-xs text-gray-700">
-              {attachments.length} attachment{attachments.length > 1 ? "s" : ""}
+              {safeAttachments.length} attachment{safeAttachments.length > 1 ? "s" : ""}
             </span>
           </div>
         )}

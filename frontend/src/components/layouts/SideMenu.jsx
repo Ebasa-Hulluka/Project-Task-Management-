@@ -142,6 +142,27 @@ const getMenuItems = (role) => {
     },
   ];
 
+  const testerItems = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      path: "/tester/dashboard",
+      icon: LuLayoutDashboard,
+    },
+    {
+      id: "testing-tasks",
+      label: "Testing Tasks",
+      path: "/tester/tasks",
+      icon: LuClipboardCheck,
+    },
+    {
+      id: "calendar",
+      label: "Calendar",
+      path: "/tester/calendar",
+      icon: LuCalendar,
+    },
+  ];
+
   let roleItems = [];
   switch (role) {
     case "superAdmin":
@@ -153,6 +174,9 @@ const getMenuItems = (role) => {
       break;
     case "teamMember":
       roleItems = memberItems;
+      break;
+    case "tester":
+      roleItems = testerItems;
       break;
     default:
       roleItems = [];
@@ -210,6 +234,13 @@ const SideMenu = ({ isOpen, setIsOpen, isMobile }) => {
       );
     }
 
+    if (location.pathname === path) {
+      if (isMobile && setIsOpen) {
+        setIsOpen(false);
+      }
+      return;
+    }
+
     navigate(path);
 
     // Close sidebar on mobile after navigation
@@ -225,7 +256,7 @@ const SideMenu = ({ isOpen, setIsOpen, isMobile }) => {
   const confirmLogout = () => {
     logout();
     toast.success("Logged out successfully");
-    navigate("/");
+    navigate("/", { replace: true });
     setShowLogoutConfirm(false);
   };
 
@@ -338,6 +369,8 @@ const SideMenu = ({ isOpen, setIsOpen, isMobile }) => {
                     ? "bg-amber-100 text-amber-700"
                     : user?.role === "projectManager"
                       ? "bg-sky-100 text-sky-700"
+                      : user?.role === "tester"
+                        ? "bg-violet-100 text-violet-700"
                       : "bg-emerald-100 text-emerald-700"
                 }
               `}
@@ -521,15 +554,15 @@ const SideMenu = ({ isOpen, setIsOpen, isMobile }) => {
 
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[130] bg-black/50 flex items-end sm:items-center justify-center p-4">
-          <div className="app-card rounded-2xl w-full max-w-sm p-5">
-            <h3 className="text-base font-semibold app-text">Logout</h3>
+          <div className="app-card rounded-2xl w-full max-w-sm p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold app-text">Confirm logout</h3>
             <p className="text-sm app-text-muted mt-2">
-              Are you sure you want to logout?
+              Are you sure you want to log out?
             </p>
             <div className="flex justify-end gap-3 mt-5">
               <button
                 type="button"
-                className="btn-outline"
+                className="px-4 py-2 rounded-lg text-sm font-medium app-text hover:bg-[var(--app-surface-hover)] transition-colors"
                 onClick={() => setShowLogoutConfirm(false)}
               >
                 Cancel
@@ -539,7 +572,7 @@ const SideMenu = ({ isOpen, setIsOpen, isMobile }) => {
                 className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition-colors"
                 onClick={confirmLogout}
               >
-                Logout
+                Log out
               </button>
             </div>
           </div>

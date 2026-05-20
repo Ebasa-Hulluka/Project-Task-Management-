@@ -23,6 +23,7 @@ const COLORS = ["#194f87", "#2e6aa3", "#0f5841"];
 const MemberDashboard = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const taskBasePath = user?.role === "tester" ? "/tester/tasks" : "/member/tasks";
 
   const [dashboardData, setDashboardData] = useState(null);
   const [recentTasks, setRecentTasks] = useState([]);
@@ -39,6 +40,8 @@ const MemberDashboard = () => {
     const taskDistributionData = [
       { name: "Pending", value: taskDistribution?.Pending || 0 },
       { name: "In Progress", value: taskDistribution?.InProgress || 0 },
+      { name: "In Review", value: taskDistribution?.InReview || 0 },
+      { name: "Changes Requested", value: taskDistribution?.ChangesRequested || 0 },
       { name: "Completed", value: taskDistribution?.Completed || 0 },
     ];
 
@@ -95,11 +98,11 @@ const MemberDashboard = () => {
   };
 
   const handleSeeAllTasks = () => {
-    navigate("/member/tasks");
+    navigate(taskBasePath);
   };
 
   const handleTaskClick = (taskId) => {
-    navigate(`/member/tasks/${taskId}`);
+    navigate(`${taskBasePath}/${taskId}`);
   };
 
   useEffect(() => {
@@ -111,6 +114,7 @@ const MemberDashboard = () => {
     total: dashboardData?.statistics?.totalTasks || 0,
     pending: dashboardData?.statistics?.pendingTasks || 0,
     inProgress: dashboardData?.statistics?.inProgressTasks || 0,
+    inReview: dashboardData?.statistics?.inReviewTasks || 0,
     completed: dashboardData?.statistics?.completedTasks || 0,
   };
 
@@ -157,8 +161,10 @@ const MemberDashboard = () => {
               icon="🔄"
             />
             <InfoCard
-              label="Completed"
-              value={addThousandSeparator(stats.completed)}
+              label={user?.role === "tester" ? "In Review" : "Completed"}
+              value={addThousandSeparator(
+                user?.role === "tester" ? stats.inReview : stats.completed,
+              )}
               color="bg-green-600"
               icon="✅"
             />

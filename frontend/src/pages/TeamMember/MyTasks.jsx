@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 import { LuSearch, LuFilter, LuClock } from "react-icons/lu";
 
 import DashboardLayout from "../../components/layouts/DashboardLayout";
+import { useUser } from "../../context/userContext";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import TaskStatusTabs from "../../components/TaskStatusTabs";
@@ -13,6 +14,7 @@ import useIncrementalList from "../../hooks/useIncrementalList";
 import { getErrorMessage } from "../../utils/helper";
 
 const MyTasks = () => {
+  const { user } = useUser();
   const [allTasks, setAllTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [tabs, setTabs] = useState([]);
@@ -29,6 +31,7 @@ const MyTasks = () => {
   } = useIncrementalList(filteredTasks, 4, [filteredTasks.length, searchTerm, filterStatus]);
 
   const navigate = useNavigate();
+  const taskBasePath = user?.role === "tester" ? "/tester/tasks" : "/member/tasks";
 
   const getAllTasks = async () => {
     try {
@@ -47,6 +50,8 @@ const MyTasks = () => {
         { label: "All", count: statusSummary.all || 0 },
         { label: "Pending", count: statusSummary.pendingTasks || 0 },
         { label: "In Progress", count: statusSummary.inProgressTasks || 0 },
+        { label: "In Review", count: statusSummary.inReviewTasks || 0 },
+        { label: "Changes Requested", count: statusSummary.changesRequestedTasks || 0 },
         { label: "Completed", count: statusSummary.completedTasks || 0 },
       ];
       setTabs(statusArray);
@@ -60,11 +65,11 @@ const MyTasks = () => {
 
   const handleTaskClick = (taskId) => {
     console.log("Navigating to task:", taskId);
-    navigate(`/member/tasks/${taskId}`);
+    navigate(`${taskBasePath}/${taskId}`);
   };
 
   const handleUpdateStatus = (taskId) => {
-    navigate(`/member/tasks/${taskId}/update-status`);
+    navigate(`/member/tasks/${taskId}`, { state: { openStatusEditor: true } });
   };
 
   // Apply search filter
@@ -96,7 +101,7 @@ const MyTasks = () => {
   }, []);
 
   return (
-    <DashboardLayout activeMenu="My Tasks">
+    <DashboardLayout activeMenu={user?.role === "tester" ? "Testing Tasks" : "My Tasks"}>
       <div className="my-5">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -150,7 +155,7 @@ const MyTasks = () => {
                   task={task}
                   onClick={() => handleTaskClick(task._id)}
                   onStatusUpdate={() => handleUpdateStatus(task._id)}
-                  showActions={true}
+                  showActions={user?.role !== "tester"}
                 />
               ))
             ) : (

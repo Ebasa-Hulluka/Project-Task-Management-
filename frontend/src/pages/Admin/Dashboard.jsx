@@ -73,9 +73,9 @@ const Dashboard = () => {
   const getRecentTasks = async () => {
     try {
       const response = await axiosInstance.get(API_PATHS.TASKS.GET_ALL_TASKS);
-      if (response.data && response.data.tasks) {
+      if (response.data && Array.isArray(response.data.tasks)) {
         // Get the 5 most recent tasks
-        const sorted = response.data.tasks.sort(
+        const sorted = [...response.data.tasks].sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
         );
         setRecentTasks(sorted.slice(0, 5));

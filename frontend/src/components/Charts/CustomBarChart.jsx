@@ -61,7 +61,7 @@ const CustomBarChart = ({
   // Transform data if needed
   const chartData = Array.isArray(data)
     ? data
-    : data.high !== undefined
+    : data && data.high !== undefined
       ? [
           { name: "High", value: data.high || 0 },
           { name: "Medium", value: data.medium || 0 },

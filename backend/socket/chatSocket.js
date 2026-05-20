@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
 const User = require("../models/User");
 const Conversation = require("../models/Conversation");
+const { isOriginAllowed } = require("../utils/corsConfig");
 
 let io = null;
 const userSockets = new Map();
@@ -66,7 +67,10 @@ const initSocket = (httpServer) => {
 
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || "*",
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) return callback(null, true);
+        return callback(new Error(`CORS policy: Origin ${origin} is not allowed.`));
+      },
       methods: ["GET", "POST", "PUT", "DELETE"],
     },
   });

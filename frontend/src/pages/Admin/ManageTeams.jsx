@@ -103,7 +103,7 @@ const ManageTeams = () => {
 
   const getAllUsers = async () => {
     try {
-      const response = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
+      const response = await axiosInstance.get(API_PATHS.USERS.GET_TEAM_MEMBERS);
       const payload = response?.data;
       const list = Array.isArray(payload)
         ? payload
@@ -305,6 +305,7 @@ const ManageTeams = () => {
           label="Select Team Members *"
           placeholder="Add team members"
           users={allUsers}
+          filterByRole="teamMember"
           selectedUsers={formData.members}
           onChange={(members) => {
             setFormTouched(true);

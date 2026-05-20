@@ -8,12 +8,14 @@ import {
 } from "react-icons/lu";
 
 import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DeleteAlert from "../../components/DeleteAlert";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import ProjectCard from "../../components/Cards/ProjectCard";
 import IncrementalListControls from "../../components/IncrementalListControls";
 import useIncrementalList from "../../hooks/useIncrementalList";
 import { PROJECT_STATUS_DATA } from "../../utils/data";
+import { getErrorMessage } from "../../utils/helper";
 
 const ProjectList = () => {
   const [projects, setProjects] = useState([]);
@@ -22,6 +24,8 @@ const ProjectList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const {
     visibleItems: visibleProjects,
     visibleCount: visibleProjectCount,
@@ -60,6 +64,32 @@ const ProjectList = () => {
   // Handle edit project
   const handleEditProject = (projectId) => {
     navigate(`/manager/projects/edit/${projectId}`);
+  };
+
+  const handleDeleteProject = (projectId) => {
+    const target =
+      projects.find((p) => p._id === projectId) ||
+      filteredProjects.find((p) => p._id === projectId);
+    setDeleteTarget(target || { _id: projectId, name: "this project" });
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!deleteTarget?._id) return;
+
+    try {
+      setDeleting(true);
+      await axiosInstance.delete(
+        API_PATHS.PROJECTS.DELETE_PROJECT(deleteTarget._id),
+      );
+      toast.success("Project deleted successfully");
+      setDeleteTarget(null);
+      fetchProjects();
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast.error(getErrorMessage(error) || "Failed to delete project");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Apply filters and search
@@ -201,6 +231,7 @@ const ProjectList = () => {
                   project={project}
                   onClick={() => handleProjectClick(project._id)}
                   onEdit={() => handleEditProject(project._id)}
+                  onDelete={() => handleDeleteProject(project._id)}
                   showActions={true}
                 />
               ))
@@ -223,6 +254,16 @@ const ProjectList = () => {
             itemLabel="projects"
           />
         )}
+
+        <DeleteAlert
+          isOpen={Boolean(deleteTarget)}
+          onClose={() => !deleting && setDeleteTarget(null)}
+          onConfirm={confirmDeleteProject}
+          title="Delete Project"
+          message="Are you sure you want to delete this project? This action cannot be undone."
+          itemName={deleteTarget?.name}
+          loading={deleting}
+        />
       </div>
     </DashboardLayout>
   );

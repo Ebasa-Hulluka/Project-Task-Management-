@@ -147,6 +147,16 @@ export const STATUS_DATA = [
     color: "bg-blue-100 text-blue-600",
   },
   {
+    label: "In Review",
+    value: "In Review",
+    color: "bg-violet-100 text-violet-600",
+  },
+  {
+    label: "Changes Requested",
+    value: "Changes Requested",
+    color: "bg-amber-100 text-amber-700",
+  },
+  {
     label: "Completed",
     value: "Completed",
     color: "bg-green-100 text-green-600",
@@ -177,6 +187,7 @@ export const PROJECT_STATUS_DATA = [
 export const USER_ROLES = [
   { label: "Project Manager", value: "projectManager" },
   { label: "Team Member", value: "teamMember" },
+  { label: "Tester", value: "tester" },
 ];
 
 // Validation Functions
@@ -237,6 +248,10 @@ export const getStatusColor = (status) => {
       return "text-green-600 bg-green-100";
     case "In Progress":
       return "text-blue-600 bg-blue-100";
+    case "In Review":
+      return "text-violet-600 bg-violet-100";
+    case "Changes Requested":
+      return "text-amber-700 bg-amber-100";
     case "Pending":
       return "text-gray-600 bg-gray-100";
     default:

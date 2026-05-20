@@ -4,7 +4,9 @@ import {
   LuMail,
   LuEllipsisVertical,
   LuTrash2,
+  LuUserX,
   LuCheck,
+  LuCircleCheck,
   LuCrown,
   LuStar,
   LuUserCheck,
@@ -16,6 +18,7 @@ import ReactivateButton from "../ReactivateButton";
 const UserCard = ({
   user,
   onDelete,
+  onDeactivate,
   onRoleChange,
   onReactivate,
   statusActionLoading = false,
@@ -65,9 +68,14 @@ const UserCard = ({
     requesterIsAdmin &&
     !targetIsSuperAdmin &&
     (!targetIsAdmin || requesterIsSuperAdmin);
-  const canManageActions = canChangeRole;
   const effectiveStatus = isActive === false ? "deactivated" : status;
   const isDeactivated = effectiveStatus === "deactivated";
+  const canDeactivate =
+    requesterIsAdmin &&
+    !isDeactivated &&
+    !targetIsSuperAdmin &&
+    (!targetIsAdmin || requesterIsSuperAdmin);
+  const canManageActions = canChangeRole || canDeactivate;
 
   const getStatusBadgeStyles = (value) => {
     switch (value) {
@@ -100,6 +108,8 @@ const UserCard = ({
         return "bg-blue-100 text-blue-700 border-blue-200";
       case "teamMember":
         return "bg-green-100 text-green-700 border-green-200";
+      case "tester":
+        return "bg-violet-100 text-violet-700 border-violet-200";
       default:
         return "bg-gray-100 text-gray-700 border-gray-200";
     }
@@ -115,6 +125,8 @@ const UserCard = ({
         return <LuStar className="text-blue-600" />;
       case "teamMember":
         return <LuUserCheck className="text-green-600" />;
+      case "tester":
+        return <LuCircleCheck className="text-violet-600" />;
       default:
         return <LuUser className="text-gray-600" />;
     }
@@ -130,6 +142,8 @@ const UserCard = ({
         return "Project Manager";
       case "teamMember":
         return "Team Member";
+      case "tester":
+        return "Tester";
       default:
         return role;
     }
@@ -187,6 +201,19 @@ const UserCard = ({
                       </div>
                     )}
                   </div>
+                )}
+                {canDeactivate && (
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowRoleDropdown(false);
+                      if (onDeactivate) onDeactivate(_id);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2"
+                  >
+                    <LuUserX className="text-xs" />
+                    Deactivate User
+                  </button>
                 )}
                 <button
                   onClick={() => {

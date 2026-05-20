@@ -25,7 +25,7 @@ router
   .route("/:id")
   .get(getProjectById)
   .put(authorize("admin", "projectManager"), updateProject)
-  .delete(authorize("admin"), deleteProject);
+  .delete(authorize("admin", "projectManager"), deleteProject);
 
 router.get("/:id/progress", getProjectProgress);
 

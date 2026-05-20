@@ -2,13 +2,14 @@ import React from "react";
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    const value = payload[0].value;
-    const name = payload[0].name || data.name || label;
-    const color = payload[0].color || data.color || "#8D51FF";
+    const item = payload[0] || {};
+    const data = item.payload || {};
+    const value = item.value ?? 0;
+    const name = item.name || data.name || label;
+    const color = item.color || data.color || "#8D51FF";
     const percentage =
       data.percentage ||
-      payload[0].payload.percentage ||
+      item.payload?.percentage ||
       (data.total ? Math.round((value / data.total) * 100) : null);
 
     return (
@@ -26,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }) => {
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-gray-500">Value:</span>
           <span className="text-sm font-semibold text-gray-900">
-            {value.toLocaleString()}
+            {Number(value).toLocaleString()}
           </span>
         </div>
 

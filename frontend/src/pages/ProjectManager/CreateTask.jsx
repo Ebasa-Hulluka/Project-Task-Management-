@@ -11,6 +11,7 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { PRIORITY_DATA } from "../../utils/data";
 import { getErrorMessage } from "../../utils/helper";
+import { getProjectTeamDisplay } from "../../utils/projectTeam";
 
 const CreateTask = () => {
   const location = useLocation();
@@ -20,13 +21,16 @@ const CreateTask = () => {
 
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [assignableUsers, setAssignableUsers] = useState([]);
+  const [loadingTeamMembers, setLoadingTeamMembers] = useState(false);
+  const [testers, setTesters] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     priority: "Medium",
     dueDate: "",
     assignedTo: [],
+    tester: null,
     projectId: initialProjectId || "",
     attachments: [],
     todoChecklist: [],
@@ -44,14 +48,13 @@ const CreateTask = () => {
         setProjects(projectsResponse.data);
       }
 
-      // Fetch users
-      const usersResponse = await axiosInstance.get(
-        API_PATHS.USERS.GET_TEAM_MEMBERS,
+      const testersResponse = await axiosInstance.get(
+        API_PATHS.USERS.GET_USERS_BY_ROLE("tester"),
       );
-      if (usersResponse.data) {
-        const formattedUsers = (Array.isArray(usersResponse.data)
-          ? usersResponse.data
-          : usersResponse.data?.users || []
+      if (testersResponse.data) {
+        const formattedTesters = (Array.isArray(testersResponse.data)
+          ? testersResponse.data
+          : testersResponse.data?.users || []
         ).map((user) => ({
           _id: user._id,
           name: user.name,
@@ -59,7 +62,7 @@ const CreateTask = () => {
           profileImageUrl: user.profileImageUrl,
           role: user.role,
         }));
-        setUsers(formattedUsers);
+        setTesters(formattedTesters);
       }
     } catch (error) {
       // Don't spam console with 403 errors
@@ -70,18 +73,55 @@ const CreateTask = () => {
     }
   };
 
+  const loadProjectTeamMembers = async (projectId) => {
+    if (!projectId) {
+      setAssignableUsers([]);
+      return;
+    }
+
+    try {
+      setLoadingTeamMembers(true);
+      const response = await axiosInstance.get(
+        API_PATHS.PROJECTS.GET_PROJECT_BY_ID(projectId),
+      );
+      const { users } = getProjectTeamDisplay(response.data?.team);
+      setAssignableUsers(users);
+    } catch (error) {
+      console.error("Error loading project team members:", error);
+      setAssignableUsers([]);
+      if (error?.response?.status !== 403) {
+        toast.error(getErrorMessage(error) || "Failed to load team members");
+      }
+    } finally {
+      setLoadingTeamMembers(false);
+    }
+  };
+
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "projectId") {
+        next.assignedTo = [];
+      }
+      return next;
+    });
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+    if (name === "projectId" && errors.assignedTo) {
+      setErrors((prev) => ({ ...prev, assignedTo: "" }));
     }
   };
 
   // Handle assigned users change
   const handleAssignedToChange = (selectedUsers) => {
     setFormData((prev) => ({ ...prev, assignedTo: selectedUsers }));
+  };
+
+  const handleTesterChange = (selectedUsers) => {
+    setFormData((prev) => ({ ...prev, tester: selectedUsers[0] || null }));
   };
 
   // Handle todo checklist change
@@ -135,6 +175,10 @@ const CreateTask = () => {
         assignedTo: formData.assignedTo.map((user) =>
           typeof user === "string" ? user : user?._id,
         ),
+        tester:
+          typeof formData.tester === "string"
+            ? formData.tester
+            : formData.tester?._id || null,
       };
 
       const response = await axiosInstance.post(
@@ -163,6 +207,14 @@ const CreateTask = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!formData.projectId) {
+      setAssignableUsers([]);
+      return;
+    }
+    loadProjectTeamMembers(formData.projectId);
+  }, [formData.projectId]);
 
   return (
     <DashboardLayout activeMenu="Create Task">
@@ -287,16 +339,44 @@ const CreateTask = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Assign To *
               </label>
-              <SelectUsers
-                users={users}
-                selectedUsers={formData.assignedTo}
-                onChange={handleAssignedToChange}
-                placeholder="Select team members..."
-                filterByRole="teamMember"
-              />
+              {!formData.projectId ? (
+                <p className="text-sm text-gray-500 border border-dashed border-gray-200 rounded-lg p-4">
+                  Select a project first to choose members from its team.
+                </p>
+              ) : loadingTeamMembers ? (
+                <p className="text-sm text-gray-500 border border-dashed border-gray-200 rounded-lg p-4">
+                  Loading team members...
+                </p>
+              ) : assignableUsers.length === 0 ? (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  This project has no team members to assign. Edit the project and
+                  link a team with members first.
+                </p>
+              ) : (
+                <SelectUsers
+                  users={assignableUsers}
+                  selectedUsers={formData.assignedTo}
+                  onChange={handleAssignedToChange}
+                  placeholder="Select team members from project team..."
+                  filterByRole="teamMember"
+                />
+              )}
               {errors.assignedTo && (
                 <p className="text-red-500 text-xs mt-1">{errors.assignedTo}</p>
               )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tester
+              </label>
+              <SelectUsers
+                users={testers}
+                selectedUsers={formData.tester ? [formData.tester] : []}
+                onChange={handleTesterChange}
+                placeholder="Select tester..."
+                filterByRole="tester"
+              />
             </div>
 
             {/* Todo Checklist */}

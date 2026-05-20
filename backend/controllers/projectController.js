@@ -147,7 +147,14 @@ const getProjectById = async (req, res) => {
     }
 
     const project = await Project.findById(id)
-      .populate("team", "name description")
+      .populate({
+        path: "team",
+        select: "name description members lead",
+        populate: [
+          { path: "members", select: "name email profileImageUrl" },
+          { path: "lead", select: "name email profileImageUrl" },
+        ],
+      })
       .populate("createdBy", "name email");
 
     if (!project) {
@@ -279,7 +286,7 @@ const updateProject = async (req, res) => {
 
 // @desc    Delete project
 // @route   DELETE /api/projects/:id
-// @access  Private (Admin only)
+// @access  Private (Admin, Project Manager - only their own)
 const deleteProject = async (req, res) => {
   try {
     const { id } = req.params;
@@ -288,18 +295,26 @@ const deleteProject = async (req, res) => {
       return res.status(400).json({ message: "Invalid project ID format" });
     }
 
-    // Check if project has tasks
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    if (
+      req.user.role !== "admin" &&
+      project.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this project" });
+    }
+
     const taskCount = await Task.countDocuments({ projectId: id });
     if (taskCount > 0) {
       return res.status(400).json({
         message:
           "Cannot delete project with existing tasks. Delete tasks first.",
       });
-    }
-
-    const project = await Project.findById(id);
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
     }
 
     await Team.updateMany(

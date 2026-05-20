@@ -37,6 +37,33 @@ const UserProvider = ({ children }) => {
     loadUserFromStorage();
   }, []);
 
+  useEffect(() => {
+    const syncAuthFromStorage = () => {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
+      if (!token || !storedUser) {
+        setUser(null);
+        return;
+      }
+
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (err) {
+        console.error("Failed to sync stored user:", err);
+        clearUser();
+      }
+    };
+
+    window.addEventListener("pageshow", syncAuthFromStorage);
+    window.addEventListener("popstate", syncAuthFromStorage);
+
+    return () => {
+      window.removeEventListener("pageshow", syncAuthFromStorage);
+      window.removeEventListener("popstate", syncAuthFromStorage);
+    };
+  }, []);
+
   // Fetch user profile from server
   const fetchUserProfile = async () => {
     const token = localStorage.getItem("token");
@@ -122,7 +149,7 @@ const UserProvider = ({ children }) => {
     const { redirect = false, path = "/" } = options;
     clearUser();
     if (redirect && window.location.pathname !== path) {
-      window.location.href = path;
+      window.location.replace(path);
     }
   };
 
@@ -259,6 +286,10 @@ const UserProvider = ({ children }) => {
     return user?.role === "teamMember";
   };
 
+  const isTester = () => {
+    return user?.role === "tester";
+  };
+
   // Get role label for consistent UI display
   const getRoleLabel = (role = user?.role) => {
     switch (role) {
@@ -274,6 +305,8 @@ const UserProvider = ({ children }) => {
       case "teammember":
       case "member":
         return "Team Member";
+      case "tester":
+        return "Tester";
       default:
         return role || "User";
     }
@@ -303,6 +336,7 @@ const UserProvider = ({ children }) => {
     isSuperAdmin,
     isProjectManager,
     isTeamMember,
+    isTester,
     getRoleLabel,
 
     // User data helpers

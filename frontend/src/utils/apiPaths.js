@@ -1,8 +1,9 @@
-export const BASE_URL = "http://localhost:8000";
+export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export const API_PATHS = {
   AUTH: {
     LOGIN: "/api/auth/login",
+    FORGOT_PASSWORD: "/api/auth/forgot-password",
     GET_PROFILE: "/api/auth/profile",
     UPDATE_PROFILE: "/api/auth/profile",
     UPLOAD_IMAGE: "/api/auth/upload-image",
@@ -24,8 +25,12 @@ export const API_PATHS = {
     ASSIGN_TEAM: "/api/users/assign-team",
     GET_USERS_BY_ROLE: (role) => `/api/users/role/${role}`,
     GET_TEAM_MEMBERS: "/api/users/team-members",
+    DEACTIVATE_ACCOUNT: (userId) => `/api/users/deactivate/${userId}`,
     REACTIVATE_ACCOUNT: (userId) => `/api/users/reactivate/${userId}`,
     GET_DEACTIVATED_USERS: "/api/users/deactivated",
+    GET_PASSWORD_RESET_REQUESTS: "/api/users/password-reset-requests",
+    COMPLETE_PASSWORD_RESET_REQUEST: (requestId) =>
+      `/api/users/password-reset-requests/${requestId}/complete`,
   },
   NOTIFICATIONS: {
     GET_NOTIFICATIONS: "/api/notifications",
@@ -43,6 +48,7 @@ export const API_PATHS = {
     UPDATE_TASK: (taskId) => `/api/tasks/${taskId}`,
     DELETE_TASK: (taskId) => `/api/tasks/${taskId}`,
     UPDATE_TASK_STATUS: (taskId) => `/api/tasks/${taskId}/status`,
+    REVIEW_TASK: (taskId) => `/api/tasks/${taskId}/review`,
     UPDATE_TODO_CHECKLIST: (taskId) => `/api/tasks/${taskId}/todo`,
     UPDATE_TODO: (taskId) => `/api/tasks/${taskId}/todo`,
     GET_TASKS_BY_PROJECT: (projectId) => `/api/tasks/project/${projectId}`,

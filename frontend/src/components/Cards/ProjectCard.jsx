@@ -15,6 +15,7 @@ import {
 import AvatarGroup from "../AvatarGroup";
 import ProjectProgressBar from "../ProjectProgressBar";
 import { getStatusColor } from "../../utils/helper";
+import { getProjectTeamDisplay } from "../../utils/projectTeam";
 
 const ProjectCard = ({
   project,
@@ -39,6 +40,21 @@ const ProjectCard = ({
     tasks = [],
     createdAt,
   } = project;
+
+  const safeTeam = Array.isArray(team) ? team : [];
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const { teamNames, users: teamMemberUsers } = getProjectTeamDisplay(safeTeam);
+
+  const apiSummary = project.taskSummary;
+  const taskSummary = apiSummary
+    ? {
+        total: apiSummary.total ?? 0,
+        completed: apiSummary.completed ?? 0,
+      }
+    : {
+        total: safeTasks.length,
+        completed: safeTasks.filter((t) => t.status === "Completed").length,
+      };
 
   const isActive = status === "Active";
   const isCompleted = status === "Completed";
@@ -71,11 +87,6 @@ const ProjectCard = ({
     if (onDelete) {
       onDelete(_id);
     }
-  };
-
-  const taskSummary = {
-    total: tasks?.length || 0,
-    completed: tasks?.filter((t) => t.status === "Completed").length || 0,
   };
 
   return (
@@ -153,15 +164,22 @@ const ProjectCard = ({
       </div>
 
       {/* Team */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <LuUsers className="text-gray-400" />
-          <span className="text-xs text-gray-500">
-            {team.length} member{team.length !== 1 ? "s" : ""}
-          </span>
+      <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <LuUsers className="text-gray-400 shrink-0" />
+            <span
+              className="text-xs text-gray-500 truncate"
+              title={teamNames.join(" · ")}
+            >
+              {teamNames.length > 0
+                ? teamNames.join(" · ")
+                : `${teamMemberUsers.length} member${teamMemberUsers.length !== 1 ? "s" : ""}`}
+            </span>
+          </div>
         </div>
 
-        <AvatarGroup users={team} maxVisible={3} size="sm" />
+        <AvatarGroup users={teamMemberUsers} maxVisible={3} size="sm" />
       </div>
 
       {/* Action Buttons */}

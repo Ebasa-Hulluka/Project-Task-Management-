@@ -53,10 +53,13 @@ const ManagerDashboard = () => {
       );
 
       if (projectsResponse.data) {
-        setProjects(projectsResponse.data);
+        const projectsData = Array.isArray(projectsResponse.data)
+          ? projectsResponse.data
+          : [];
+        setProjects(projectsData);
 
         // Calculate project stats
-        const activeCount = projectsResponse.data.filter(
+        const activeCount = projectsData.filter(
           (p) => p.status === "Active",
         ).length;
 
@@ -70,14 +73,16 @@ const ManagerDashboard = () => {
         let lowPriority = 0;
 
         // Get tasks from each project
-        for (const project of projectsResponse.data) {
+        for (const project of projectsData) {
           try {
             const tasksResponse = await axiosInstance.get(
               API_PATHS.TASKS.GET_TASKS_BY_PROJECT(project._id),
             );
 
             if (tasksResponse.data) {
-              const tasks = tasksResponse.data;
+              const tasks = Array.isArray(tasksResponse.data)
+                ? tasksResponse.data
+                : [];
               allTasks = [...allTasks, ...tasks];
 
               // Calculate task stats
@@ -101,7 +106,7 @@ const ManagerDashboard = () => {
 
         // Update stats
         setStats({
-          totalProjects: projectsResponse.data.length,
+          totalProjects: projectsData.length,
           activeProjects: activeCount,
           totalTasks: allTasks.length,
           completedTasks: completedCount,

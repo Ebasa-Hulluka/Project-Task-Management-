@@ -20,6 +20,8 @@ const TaskStatusTabs = ({
     { label: "All", count: 0, icon: LuLayers },
     { label: "Pending", count: 0, icon: LuClock },
     { label: "In Progress", count: 0, icon: LuCircleAlert },
+    { label: "In Review", count: 0, icon: LuClipboardList },
+    { label: "Changes Requested", count: 0, icon: LuCircleAlert },
     { label: "Completed", count: 0, icon: LuCircleCheck },
   ];
 
@@ -35,6 +37,10 @@ const TaskStatusTabs = ({
       case "pending":
         return <LuClock className="text-lg" />;
       case "in progress":
+        return <LuCircleAlert className="text-lg" />;
+      case "in review":
+        return <LuClipboardList className="text-lg" />;
+      case "changes requested":
         return <LuCircleAlert className="text-lg" />;
       case "completed":
         return <LuCircleCheck className="text-lg" />;
@@ -202,6 +208,10 @@ export const StatusBadge = ({ status, count }) => {
         return "bg-green-100 text-green-700 border-green-200";
       case "in progress":
         return "bg-blue-100 text-blue-700 border-blue-200";
+      case "in review":
+        return "bg-violet-100 text-violet-700 border-violet-200";
+      case "changes requested":
+        return "bg-amber-100 text-amber-700 border-amber-200";
       case "pending":
         return "bg-yellow-100 text-yellow-700 border-yellow-200";
       default:

@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "email:test": "node scripts/testEmail.js",
     "seed:admin": "node scripts/seedSuperAdmin.js"
   },
   "keywords": [],

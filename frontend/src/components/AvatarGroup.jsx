@@ -11,13 +11,17 @@ const AvatarGroup = ({
   showTooltip = false,
   onUserClick,
 }) => {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeAvatars = Array.isArray(avatars) ? avatars : [];
+  const safeNames = Array.isArray(names) ? names : [];
+
   // Combine users and avatars data
   const items =
-    users.length > 0
-      ? users
-      : avatars.map((url, index) => ({
+    safeUsers.length > 0
+      ? safeUsers
+      : safeAvatars.map((url, index) => ({
           profileImageUrl: url,
-          name: names[index] || `User ${index + 1}`,
+          name: safeNames[index] || `User ${index + 1}`,
         }));
 
   if (!items.length) return null;

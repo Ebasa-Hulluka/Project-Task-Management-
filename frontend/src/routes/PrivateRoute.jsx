@@ -4,6 +4,7 @@ import { UserContext } from "../context/userContext";
 
 const PrivateRoute = ({ allowedRoles }) => {
   const { user, loading } = useContext(UserContext);
+  const token = localStorage.getItem("token");
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -18,7 +19,7 @@ const PrivateRoute = ({ allowedRoles }) => {
   }
 
   // If not logged in, redirect to login
-  if (!user) {
+  if (!token || !user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -40,6 +41,8 @@ const PrivateRoute = ({ allowedRoles }) => {
         return <Navigate to="/manager/dashboard" replace />;
       case "teamMember":
         return <Navigate to="/member/dashboard" replace />;
+      case "tester":
+        return <Navigate to="/tester/dashboard" replace />;
       default:
         return <Navigate to="/login" replace />;
     }

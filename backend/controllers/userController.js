@@ -1,17 +1,41 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
 const Team = require("../models/Team");
+const PasswordResetRequest = require("../models/PasswordResetRequest");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { notifyAdmins } = require("../utils/notificationService");
 const { logActivity } = require("../utils/activityLogger");
+const {
+  sendNewUserCredentialsEmail,
+  sendAccountStatusEmail,
+  sendRoleChangedEmail,
+  sendPasswordResetCompletedEmail,
+} = require("../services/emailService");
 
-const VALID_USER_ROLES = ["superAdmin", "admin", "projectManager", "teamMember"];
+const VALID_USER_ROLES = ["superAdmin", "admin", "projectManager", "teamMember", "tester"];
 const VALID_USER_STATUSES = ["active", "deactivated"];
+const DUPLICATE_EMAIL_MESSAGE = "There is already an account by this email.";
 
 const isSuperAdminUser = (user) => user?.role === "superAdmin";
 
 const canManageAdminAccounts = (actor) => isSuperAdminUser(actor);
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const findUserByEmail = (email) =>
+  User.findOne({
+    email: new RegExp(`^${escapeRegExp(String(email || "").trim())}$`, "i"),
+  });
+
+const trySendAccountEmail = async (sendEmail, context) => {
+  try {
+    await sendEmail();
+  } catch (error) {
+    console.error(`[UserController] Failed to send ${context}:`, error.message);
+  }
+};
 
 const getUsers = async (req, res) => {
   try {
@@ -42,12 +66,14 @@ const getUsers = async (req, res) => {
 
     const usersWithTaskCounts = await Promise.all(
       users.map(async (user) => {
+        const taskOwnerFilter =
+          user.role === "tester" ? { tester: user._id } : { assignedTo: user._id };
         const [pendingTasks, inProgressTasks, completedTasks, totalTasks] =
           await Promise.all([
-            Task.countDocuments({ assignedTo: user._id, status: "Pending" }),
-            Task.countDocuments({ assignedTo: user._id, status: "In Progress" }),
-            Task.countDocuments({ assignedTo: user._id, status: "Completed" }),
-            Task.countDocuments({ assignedTo: user._id }),
+            Task.countDocuments({ ...taskOwnerFilter, status: "Pending" }),
+            Task.countDocuments({ ...taskOwnerFilter, status: "In Progress" }),
+            Task.countDocuments({ ...taskOwnerFilter, status: "Completed" }),
+            Task.countDocuments(taskOwnerFilter),
           ]);
 
         return {
@@ -106,6 +132,7 @@ const getUsers = async (req, res) => {
           admin: roleCounts.admin || 0,
           projectManager: roleCounts.projectManager || 0,
           teamMember: roleCounts.teamMember || 0,
+          tester: roleCounts.tester || 0,
         },
         byStatus: {
           active: statusCounts.active || 0,
@@ -135,6 +162,13 @@ const createUser = async (req, res) => {
       return res.status(400).json({ message: "Please enter a valid email address." });
     }
 
+    const existingUser = await findUserByEmail(normalizedEmail);
+    if (existingUser) {
+      return res.status(400).json({
+        message: DUPLICATE_EMAIL_MESSAGE,
+      });
+    }
+
     if (normalizedPassword.length < 6) {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
@@ -145,13 +179,6 @@ const createUser = async (req, res) => {
 
     if (normalizedRole === "admin" && !canManageAdminAccounts(req.user)) {
       return res.status(403).json({ message: "Only the super admin can create admin accounts" });
-    }
-
-    const existingUser = await User.findOne({ email: normalizedEmail });
-    if (existingUser) {
-      return res.status(400).json({
-        message: `An account with this email already exists: ${normalizedEmail}`,
-      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -173,8 +200,24 @@ const createUser = async (req, res) => {
       `Created ${normalizedRole} account for ${createdUser.email}`,
     );
 
+    let emailSent = true;
+    try {
+      await sendNewUserCredentialsEmail({
+        to: createdUser.email,
+        name: createdUser.name,
+        password: normalizedPassword,
+        role: createdUser.role,
+      });
+    } catch (error) {
+      emailSent = false;
+      console.error("[UserController] Failed to send new user credentials:", error.message);
+    }
+
     res.status(201).json({
-      message: "User account created successfully",
+      message: emailSent
+        ? "User account created successfully and credentials email sent"
+        : "User account created successfully, but credentials email could not be sent",
+      emailSent,
       user: {
         _id: createdUser._id,
         name: createdUser.name,
@@ -186,13 +229,12 @@ const createUser = async (req, res) => {
       },
     });
   } catch (error) {
-    if (error?.code === 11000 && error?.keyPattern?.email) {
-      const duplicateEmail = String(error?.keyValue?.email || req.body?.email || "")
-        .trim()
-        .toLowerCase();
-
+    if (
+      error?.code === 11000 &&
+      (error?.keyPattern?.email || String(error?.message || "").includes("email"))
+    ) {
       return res.status(400).json({
-        message: `An account with this email already exists${duplicateEmail ? `: ${duplicateEmail}` : ""}`,
+        message: DUPLICATE_EMAIL_MESSAGE,
       });
     }
 
@@ -253,7 +295,9 @@ const deleteUser = async (req, res) => {
       return res.status(403).json({ message: "Only the super admin can delete admin accounts" });
     }
 
-    const taskCount = await Task.countDocuments({ assignedTo: id });
+    const taskCount = await Task.countDocuments({
+      $or: [{ assignedTo: id }, { tester: id }],
+    });
     if (taskCount > 0) {
       return res.status(400).json({
         message: "Cannot delete user with assigned tasks. Reassign tasks first.",
@@ -270,6 +314,74 @@ const deleteUser = async (req, res) => {
       `Deleted ${user.role} account for ${user.email}`,
     );
     res.json({ message: "User removed successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const deactivateUserAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (String(req.user._id) === String(user._id)) {
+      return res.status(403).json({ message: "You cannot deactivate your own account" });
+    }
+
+    if (user.role === "superAdmin") {
+      return res.status(403).json({ message: "Super admin account cannot be deactivated" });
+    }
+
+    if (user.role === "admin" && !canManageAdminAccounts(req.user)) {
+      return res.status(403).json({ message: "Only the super admin can deactivate admin accounts" });
+    }
+
+    if (user.isActive === false || user.status === "deactivated") {
+      return res.status(400).json({ message: "Account is already deactivated" });
+    }
+
+    user.isActive = false;
+    user.status = "deactivated";
+    user.deactivatedAt = new Date();
+    user.deactivatedBy = req.user._id;
+    await user.save();
+
+    await logActivity(
+      req.user._id,
+      "Deactivated user account",
+      `Deactivated ${user.role} account for ${user.email}`,
+    );
+
+    await trySendAccountEmail(
+      () =>
+        sendAccountStatusEmail({
+          to: user.email,
+          name: user.name,
+          action: "deactivated",
+          role: user.role,
+        }),
+      "account deactivation email",
+    );
+
+    res.status(200).json({
+      message: "Account deactivated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        isActive: user.isActive,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -319,6 +431,16 @@ const updateUserRole = async (req, res) => {
         message: `Role updated for ${user.name}: ${previousRole} -> ${role}`,
         link: "/admin/users",
       });
+      await trySendAccountEmail(
+        () =>
+          sendRoleChangedEmail({
+            to: user.email,
+            name: user.name,
+            previousRole,
+            newRole: role,
+          }),
+        "role changed email",
+      );
     }
 
     res.json({
@@ -444,6 +566,17 @@ const reactivateUserAccount = async (req, res) => {
       `Account reactivated by ${req.user.name || "Admin"}`,
     );
 
+    await trySendAccountEmail(
+      () =>
+        sendAccountStatusEmail({
+          to: user.email,
+          name: user.name,
+          action: "reactivated",
+          role: user.role,
+        }),
+      "account reactivation email",
+    );
+
     res.status(200).json({
       message: "Account reactivated successfully",
       user: {
@@ -471,10 +604,21 @@ const getDeactivatedUsers = async (req, res) => {
       users.map(async (user) => {
         const [pendingTasks, inProgressTasks, completedTasks, totalTasks] =
           await Promise.all([
-            Task.countDocuments({ assignedTo: user._id, status: "Pending" }),
-            Task.countDocuments({ assignedTo: user._id, status: "In Progress" }),
-            Task.countDocuments({ assignedTo: user._id, status: "Completed" }),
-            Task.countDocuments({ assignedTo: user._id }),
+            Task.countDocuments({
+              ...(user.role === "tester" ? { tester: user._id } : { assignedTo: user._id }),
+              status: "Pending",
+            }),
+            Task.countDocuments({
+              ...(user.role === "tester" ? { tester: user._id } : { assignedTo: user._id }),
+              status: "In Progress",
+            }),
+            Task.countDocuments({
+              ...(user.role === "tester" ? { tester: user._id } : { assignedTo: user._id }),
+              status: "Completed",
+            }),
+            Task.countDocuments(
+              user.role === "tester" ? { tester: user._id } : { assignedTo: user._id },
+            ),
           ]);
 
         return {
@@ -494,15 +638,88 @@ const getDeactivatedUsers = async (req, res) => {
   }
 };
 
+const getPasswordResetRequests = async (req, res) => {
+  try {
+    if (!isSuperAdminUser(req.user)) {
+      return res.status(403).json({ message: "Only the super admin can view password reset requests" });
+    }
+
+    const requests = await PasswordResetRequest.find({ status: "pending" })
+      .populate("user", "name email role isActive status")
+      .sort({ createdAt: -1 });
+
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const completePasswordResetRequest = async (req, res) => {
+  try {
+    if (!isSuperAdminUser(req.user)) {
+      return res.status(403).json({ message: "Only the super admin can reset requested passwords" });
+    }
+
+    const { id } = req.params;
+    const newPassword = String(req.body?.newPassword || "");
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid request ID format" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const request = await PasswordResetRequest.findById(id).populate("user");
+    if (!request || request.status !== "pending") {
+      return res.status(404).json({ message: "Pending password reset request not found" });
+    }
+
+    const user = request.user;
+    if (!user) {
+      return res.status(404).json({ message: "User not found for this request" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    request.status = "completed";
+    request.completedBy = req.user._id;
+    request.completedAt = new Date();
+    await request.save();
+
+    await logActivity(
+      req.user._id,
+      "Reset user password",
+      `Reset password for ${user.email}`,
+    );
+
+    await sendPasswordResetCompletedEmail({
+      to: user.email,
+      name: user.name,
+      password: newPassword,
+    });
+
+    res.json({ message: "Password reset completed and emailed to user" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   getUsers,
   createUser,
   getUserById,
   deleteUser,
+  deactivateUserAccount,
   updateUserRole,
   assignUserToTeam,
   getUsersByRole,
   getTeamMembers,
   reactivateUserAccount,
   getDeactivatedUsers,
+  getPasswordResetRequests,
+  completePasswordResetRequest,
 };

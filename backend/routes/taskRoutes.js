@@ -11,6 +11,7 @@ const {
   deleteTask,
   updateTaskStatus,
   updateTaskChecklist,
+  reviewTask,
   getTasksByProject,
 } = require("../controllers/taskController");
 
@@ -38,7 +39,8 @@ router
   .delete(authorize("admin", "projectManager"), deleteTask);
 
 // Task Action Routes
-router.put("/:id/status", updateTaskStatus);
-router.put("/:id/todo", updateTaskChecklist);
+router.put("/:id/status", authorize("teamMember"), updateTaskStatus);
+router.put("/:id/todo", authorize("teamMember"), updateTaskChecklist);
+router.put("/:id/review", reviewTask);
 
 module.exports = router;
