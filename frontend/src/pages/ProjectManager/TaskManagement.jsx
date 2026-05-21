@@ -249,7 +249,7 @@ const TaskManagement = () => {
                 <TaskCard
                   key={task._id}
                   task={task}
-                  onClick={() => handleTaskClick(task._id)}
+                  onClick={handleTaskClick}
                   actions={!isViewOnly ? "manager" : false}
                   onEdit={() => handleEditTask(task._id)}
                   onDelete={() => handleDeleteTask(task._id)}

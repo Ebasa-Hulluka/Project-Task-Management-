@@ -16,7 +16,7 @@ import InfoCard from "../../components/Cards/InfoCard";
 import TaskListTable from "../../components/TaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
-import { addThousandSeparator, getGreeting } from "../../utils/helper";
+import { addThousandSeparator, getGreeting, getTaskId } from "../../utils/helper";
 
 const COLORS = ["#194f87", "#2e6aa3", "#0f5841"];
 
@@ -101,7 +101,9 @@ const MemberDashboard = () => {
     navigate(taskBasePath);
   };
 
-  const handleTaskClick = (taskId) => {
+  const handleTaskClick = (taskOrId) => {
+    const taskId = getTaskId(taskOrId);
+    if (!taskId) return;
     navigate(`${taskBasePath}/${taskId}`);
   };
 
@@ -253,7 +255,8 @@ const MemberDashboard = () => {
           ) : recentTasks.length > 0 ? (
             <TaskListTable
               tableData={recentTasks}
-              onRowClick={handleTaskClick}
+              onRowClick={(task) => handleTaskClick(task)}
+              taskDetailPath={taskBasePath}
               showProject={true}
             />
           ) : (

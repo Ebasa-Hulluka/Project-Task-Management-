@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import {
   LuArrowLeft,
-  LuSquareArrowOutUpRight,
   LuCircleCheck,
   LuCircleAlert,
   LuBug,
@@ -12,6 +11,11 @@ import {
   LuCalendar,
   LuUsers,
   LuClipboardList,
+  LuFolder,
+  LuFlag,
+  LuPaperclip,
+  LuExternalLink,
+  LuPackage,
 } from "react-icons/lu";
 
 import DashboardLayout from "../../components/layouts/DashboardLayout";
@@ -23,9 +27,15 @@ import {
   formatDate,
   getPriorityColor,
   getErrorMessage,
+  getTaskId,
+  getAttachmentLabel,
+  resolveAttachmentUrl,
+  openAttachment,
+  normalizeTaskAttachments,
 } from "../../utils/helper";
 import { useUser } from "../../context/userContext";
 import { isTaskViewOnlyRole } from "../../utils/rolePaths";
+import TaskAttachmentsInput from "../../components/Inputs/TaskAttachmentsInput";
 
 const TodoCheckList = ({ text, isChecked, onChange, disabled, loading }) => (
   <label
@@ -53,15 +63,20 @@ const TodoCheckList = ({ text, isChecked, onChange, disabled, loading }) => (
   </label>
 );
 
+const MetaChip = ({ label, children }) => (
+  <span className="inline-flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-1.5 text-sm">
+    <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+      {label}
+    </span>
+    {children}
+  </span>
+);
+
 const DetailTile = ({ icon: Icon, label, children }) => (
-  <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 h-full">
+  <div className="rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3.5 h-full">
     <div className="flex items-center gap-2 mb-2">
-      {Icon && (
-        <span className="inline-flex p-1.5 rounded-lg bg-white border border-gray-100">
-          <Icon className="text-gray-500 text-base" />
-        </span>
-      )}
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+      {Icon && <Icon className="text-gray-400 text-sm shrink-0" />}
+      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
         {label}
       </p>
     </div>
@@ -69,21 +84,58 @@ const DetailTile = ({ icon: Icon, label, children }) => (
   </div>
 );
 
-const Attachment = ({ link, index, onClick }) => {
+const SectionTitle = ({ icon: Icon, title, hint, badge }) => (
+  <div className="flex items-start justify-between gap-3 mb-3">
+    <div className="flex items-center gap-2 min-w-0">
+      {Icon && <Icon className="text-gray-400 text-base shrink-0" />}
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold text-gray-800 leading-tight">{title}</h3>
+        {hint && <p className="text-xs text-gray-500 leading-snug mt-0.5">{hint}</p>}
+      </div>
+    </div>
+    {badge && <div className="flex items-center gap-1.5 shrink-0">{badge}</div>}
+  </div>
+);
+
+const Attachment = ({ item, index, subtitle }) => {
+  const href = resolveAttachmentUrl(item.url);
+  const label = item.name || getAttachmentLabel(item.url);
+
+  const handleOpen = (e) => {
+    e.preventDefault();
+    if (!openAttachment(item)) {
+      toast.error("Could not open this attachment");
+    }
+  };
+
   return (
-    <div
-      className="flex justify-between bg-gray-50 border border-gray-100 px-3 py-2 rounded-md mb-3 mt-2 cursor-pointer hover:bg-gray-100 transition-colors"
-      onClick={onClick}
+    <a
+      href={href || "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={handleOpen}
+      className="flex items-center justify-between gap-3 bg-white border border-gray-100 px-4 py-3 rounded-lg cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-colors group"
+      title={`Open ${label} in a new tab`}
     >
-      <div className="flex-1 flex items-center gap-3">
-        <span className="text-xs text-gray-400 font-semibold mr-2">
+      <div className="flex-1 flex items-center gap-3 min-w-0">
+        <span className="text-xs text-gray-400 font-semibold shrink-0">
           {index < 9 ? "0" : ""}
           {index + 1}
         </span>
-        <p className="text-xs text-black truncate max-w-md">{link}</p>
+        <LuPaperclip className="text-gray-400 shrink-0 group-hover:text-primary" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-800 truncate">{label}</p>
+          <p className="text-xs text-gray-500 truncate">{item.url}</p>
+          {subtitle && (
+            <p className="text-[11px] text-gray-400 mt-0.5">{subtitle}</p>
+          )}
+        </div>
       </div>
-      <LuSquareArrowOutUpRight className="text-gray-400" />
-    </div>
+      <span className="flex items-center gap-1 text-xs text-primary font-medium shrink-0">
+        Open
+        <LuExternalLink className="text-sm" />
+      </span>
+    </a>
   );
 };
 
@@ -108,6 +160,7 @@ const TaskDetails = () => {
 
   const [task, setTask] = useState(null);
   const [draftChecklist, setDraftChecklist] = useState([]);
+  const [draftCompletionAttachments, setDraftCompletionAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSavingChecklist, setIsSavingChecklist] = useState(false);
@@ -130,14 +183,30 @@ const TaskDetails = () => {
   };
 
   const getTaskDetailsById = async () => {
+    const taskId = getTaskId(id);
+    if (!taskId || taskId === "undefined") {
+      setError("Invalid task ID");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await axiosInstance.get(API_PATHS.TASKS.GET_TASK_BY_ID(id));
+      const response = await axiosInstance.get(
+        API_PATHS.TASKS.GET_TASK_BY_ID(taskId),
+      );
 
-      if (response.data) {
-        setTask(response.data);
-        setDraftChecklist(cloneChecklist(response.data.todoChecklist));
+      const taskData = response.data?.task ?? response.data;
+      if (taskData && getTaskId(taskData)) {
+        setTask(taskData);
+        setDraftChecklist(cloneChecklist(taskData.todoChecklist));
+        setDraftCompletionAttachments(
+          normalizeTaskAttachments(taskData.completionAttachments || []),
+        );
         setError(null);
+      } else {
+        setTask(null);
+        setError("Task not found");
       }
     } catch (apiError) {
       console.error("Error fetching task:", apiError);
@@ -169,25 +238,48 @@ const TaskDetails = () => {
       return;
     }
 
-    if (
-      checklistSignature(draftChecklist) ===
-      checklistSignature(task.todoChecklist)
-    ) {
-      toast.error("No checklist changes to save");
+    const draftDone =
+      draftChecklist.length > 0 &&
+      draftChecklist.every((item) => item.completed);
+    const checklistChanged =
+      checklistSignature(draftChecklist) !==
+      checklistSignature(task.todoChecklist);
+    const completionChanged =
+      JSON.stringify(draftCompletionAttachments) !==
+      JSON.stringify(normalizeTaskAttachments(task.completionAttachments || []));
+
+    if (!checklistChanged && !completionChanged) {
+      toast.error("No changes to save");
+      return;
+    }
+
+    const submittingForReview =
+      draftDone && task.tester && task.status !== "In Review";
+
+    if (submittingForReview && draftCompletionAttachments.length === 0) {
+      toast.error(
+        "Add at least one delivery attachment (file or link) before submitting for testing.",
+      );
       return;
     }
 
     setIsSavingChecklist(true);
 
     try {
-      const response = await axiosInstance.put(API_PATHS.TASKS.UPDATE_TODO(id), {
-        todoChecklist: draftChecklist,
-      });
+      const payload = { todoChecklist: draftChecklist };
+      if (completionChanged || draftCompletionAttachments.length > 0) {
+        payload.completionAttachments = draftCompletionAttachments;
+      }
+
+      const response = await axiosInstance.put(API_PATHS.TASKS.UPDATE_TODO(id), payload);
 
       const updatedTask = response?.data?.task || response?.data;
       if (updatedTask) {
         setTask(updatedTask);
         setDraftChecklist(cloneChecklist(updatedTask.todoChecklist));
+        setDraftCompletionAttachments(
+          normalizeTaskAttachments(updatedTask.completionAttachments || []),
+        );
       }
       toast.success("Task updated successfully");
     } catch (apiError) {
@@ -195,14 +287,6 @@ const TaskDetails = () => {
     } finally {
       setIsSavingChecklist(false);
     }
-  };
-
-  const handleLinkClick = (link) => {
-    let safeLink = link;
-    if (!/^https?:\/\//i.test(safeLink)) {
-      safeLink = `https://${safeLink}`;
-    }
-    window.open(safeLink, "_blank");
   };
 
   const handleReviewTask = async (result) => {
@@ -319,11 +403,29 @@ const TaskDetails = () => {
   const testerName =
     task.tester && typeof task.tester === "object"
       ? task.tester.name
-      : "Unassigned";
+      : "Not assigned";
+  const projectName =
+    task.projectId && typeof task.projectId === "object"
+      ? task.projectId.name
+      : null;
+  const referenceAttachments = normalizeTaskAttachments(task.attachments || []);
+  const completionAttachments = normalizeTaskAttachments(
+    task.completionAttachments || [],
+  );
+  const draftChecklistDone =
+    draftChecklist.length > 0 && draftChecklist.every((item) => item.completed);
+  const canEditCompletion =
+    canUpdateTodo && draftChecklistDone && task.status !== "Completed";
+  const isTesterView = user?.role === "tester";
+  const completionChanged =
+    JSON.stringify(draftCompletionAttachments) !==
+    JSON.stringify(completionAttachments);
+  const hasSaveableChanges =
+    hasChecklistChanges || (canUpdateTodo && completionChanged);
 
   return (
     <DashboardLayout activeMenu="My Tasks">
-      <div className="my-5 max-w-4xl mx-auto space-y-6">
+      <div className="my-6 max-w-4xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -332,38 +434,45 @@ const TaskDetails = () => {
           >
             <LuArrowLeft className="text-xl" />
           </button>
-          <div>
-            <h2 className="text-xl md:text-2xl font-medium">Task Details</h2>
-            {task.projectId && typeof task.projectId === "object" && (
-              <p className="text-sm text-gray-500 mt-0.5">
-                {task.projectId.name || "Project"}
-              </p>
-            )}
-          </div>
+          <h2 className="text-xl font-semibold text-gray-900">Task Details</h2>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <h1 className="text-2xl font-semibold text-gray-900 leading-tight">
-                {task.title}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">
+              Task name
+            </p>
+            <h1 className="text-2xl font-semibold text-gray-900 leading-tight">
+              {task.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3 mt-4">
+              {projectName && (
+                <MetaChip label="Project">
+                  <span className="inline-flex items-center gap-1 font-medium text-gray-800">
+                    <LuFolder className="text-gray-500 text-sm" />
+                    {projectName}
+                  </span>
+                </MetaChip>
+              )}
+              <MetaChip label="Status">
                 <span
-                  className={`text-sm font-medium px-3 py-1 rounded-full ${getStatusTagColor(task.status)}`}
+                  className={`font-medium px-2 py-0.5 rounded-full text-xs ${getStatusTagColor(task.status)}`}
                 >
                   {task.status}
                 </span>
+              </MetaChip>
+              <MetaChip label="Priority">
                 <span
-                  className={`text-sm font-medium px-3 py-1 rounded-full ${getPriorityColor(task.priority)}`}
+                  className={`inline-flex items-center gap-1 font-medium px-2 py-0.5 rounded-full text-xs ${getPriorityColor(task.priority)}`}
                 >
+                  <LuFlag className="text-[10px] opacity-70" />
                   {task.priority}
                 </span>
-              </div>
+              </MetaChip>
             </div>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="px-6 py-6 space-y-6">
             {isViewOnlyTask && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 View-only access: Super Admins and Admins cannot update task status or
@@ -371,31 +480,161 @@ const TaskDetails = () => {
               </div>
             )}
 
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {task.description?.trim() || "No description provided."}
-              </p>
-            </div>
-
-            {totalTodos > 0 && (
-              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Checklist progress
-                    </p>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {completedTodos} of {totalTodos} items completed
-                    </p>
-                  </div>
-                  <span className="text-2xl font-semibold text-gray-900">{progress}%</span>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+              <div className="lg:col-span-3 space-y-6">
+                <div>
+                  <SectionTitle
+                    title="Description"
+                    hint="What you need to do"
+                  />
+                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap rounded-xl border border-gray-100 bg-gray-50/40 px-4 py-4 min-h-[3.5rem]">
+                    {task.description?.trim() || "No description provided."}
+                  </p>
                 </div>
-                <ProjectProgressBar progress={progress} showLabel={false} />
-              </div>
-            )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {activeChecklist.length > 0 && (
+                  <div>
+                    <SectionTitle
+                      icon={LuClipboardList}
+                      title="Todo checklist"
+                      badge={
+                        <>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {completedTodos}/{totalTodos}
+                          </span>
+                          {hasChecklistChanges && (
+                            <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                              Unsaved
+                            </span>
+                          )}
+                        </>
+                      }
+                    />
+                    <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50/40 p-3">
+                      {activeChecklist.map((item, index) => (
+                        <TodoCheckList
+                          key={`${item.text}-${index}`}
+                          text={item.text}
+                          isChecked={item.completed}
+                          onChange={() => toggleDraftChecklistItem(index)}
+                          disabled={!canUpdateTodo || isSavingChecklist}
+                        />
+                      ))}
+                    </div>
+                    {canUpdateTodo && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Check all items off, add delivery attachments if required, then
+                        click Update Status.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <SectionTitle
+                    icon={LuPaperclip}
+                    title="Reference attachments"
+                    hint="From project manager — requirements, repo, specs"
+                    badge={
+                      referenceAttachments.length > 0 ? (
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          {referenceAttachments.length}
+                        </span>
+                      ) : null
+                    }
+                  />
+                  {referenceAttachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {referenceAttachments.map((item, index) => (
+                        <Attachment
+                          key={`ref-${item.url}-${index}`}
+                          item={item}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 rounded-xl border border-dashed border-gray-200 px-4 py-4">
+                      No reference files or links added yet.
+                    </p>
+                  )}
+                </div>
+
+                {(canEditCompletion ||
+                  completionAttachments.length > 0 ||
+                  (isTesterView && task.status === "In Review")) && (
+                  <div className="rounded-xl border border-violet-100 bg-violet-50/30 p-4">
+                    <SectionTitle
+                      icon={LuPackage}
+                      title="Delivery attachments"
+                      hint={
+                        canEditCompletion
+                          ? "Add proof of work (build, demo link, zip) — required before testing"
+                          : "Submitted by team member for QA review"
+                      }
+                      badge={
+                        (canEditCompletion
+                          ? draftCompletionAttachments
+                          : completionAttachments
+                        ).length > 0 ? (
+                          <span className="text-xs text-violet-700 bg-violet-100 px-2 py-0.5 rounded-full">
+                            {(canEditCompletion
+                              ? draftCompletionAttachments
+                              : completionAttachments
+                            ).length}
+                          </span>
+                        ) : null
+                      }
+                    />
+                    {canEditCompletion ? (
+                      <TaskAttachmentsInput
+                        attachments={draftCompletionAttachments}
+                        onChange={setDraftCompletionAttachments}
+                        helperText="Upload or link your completed work. Tester will open these when reviewing."
+                      />
+                    ) : completionAttachments.length > 0 ? (
+                      <div className="space-y-2">
+                        {completionAttachments.map((item, index) => (
+                          <Attachment
+                            key={`del-${item.url}-${index}`}
+                            item={item}
+                            index={index}
+                            subtitle={
+                              item.uploadedBy?.name
+                                ? `Uploaded by ${item.uploadedBy.name}`
+                                : undefined
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Waiting for team member delivery files.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="lg:col-span-2 space-y-4">
+                {totalTodos > 0 && (
+                  <div className="rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-4">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Checklist
+                      </p>
+                      <span className="text-xl font-semibold text-gray-900 leading-none">
+                        {progress}%
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      {completedTodos}/{totalTodos} done
+                    </p>
+                    <ProjectProgressBar progress={progress} showLabel={false} />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-3">
               <DetailTile icon={LuCalendar} label="Due date">
                 <div className="flex flex-wrap items-center gap-2">
                   <span>{formatDate(task.dueDate)}</span>
@@ -412,88 +651,36 @@ const TaskDetails = () => {
               </DetailTile>
 
               <DetailTile icon={LuUsers} label="Assigned to">
-                <div className="space-y-2">
-                  {task.assignedTo?.length > 0 ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {task.assignedTo?.length > 0 && (
                     <AvatarGroup
                       users={task.assignedTo}
-                      maxVisible={5}
+                      maxVisible={4}
                       showTooltip
+                      size="sm"
                     />
-                  ) : null}
-                  <p className="text-sm font-normal text-gray-600">{assignedNames}</p>
-                </div>
-              </DetailTile>
-
-              <DetailTile icon={LuCircleCheck} label="Tester">
-                {testerName}
-              </DetailTile>
-            </div>
-
-            {activeChecklist.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <LuClipboardList className="text-gray-500" />
-                    <h3 className="text-sm font-medium text-gray-800">
-                      Todo checklist
-                    </h3>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {completedTodos}/{totalTodos}
-                    </span>
-                  </div>
-                  {hasChecklistChanges && (
-                    <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                      Unsaved changes
-                    </span>
                   )}
+                  <span className="text-sm font-normal text-gray-600">{assignedNames}</span>
                 </div>
-                <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50/40 p-3">
-                  {activeChecklist.map((item, index) => (
-                    <TodoCheckList
-                      key={`${item.text}-${index}`}
-                      text={item.text}
-                      isChecked={item.completed}
-                      onChange={() => toggleDraftChecklistItem(index)}
-                      disabled={!canUpdateTodo || isSavingChecklist}
-                    />
-                  ))}
-                </div>
-                {canUpdateTodo && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Check items off, then click Update Status to save.
-                  </p>
-                )}
-              </div>
-            )}
+              </DetailTile>
 
-            {task.attachments && task.attachments.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  Attachments ({task.attachments.length})
-                </h3>
-                <div className="space-y-2">
-                  {task.attachments.map((link, index) => (
-                    <Attachment
-                      key={`${link}-${index}`}
-                      link={link}
-                      index={index}
-                      onClick={() => handleLinkClick(link)}
-                    />
-                  ))}
+              <DetailTile icon={LuCircleCheck} label="Tester (QA)">
+                <span title="Person who reviews this task when it is ready">
+                  {testerName}
+                </span>
+              </DetailTile>
                 </div>
               </div>
-            )}
+            </div>
 
             {task.reviewHistory && task.reviewHistory.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  Testing notes
-                </h3>
-                <div className="space-y-2">
+                <SectionTitle title="Testing notes" />
+                <div className="space-y-3">
                   {task.reviewHistory.map((review, index) => (
                     <div
                       key={review._id || index}
-                      className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                      className="rounded-xl border border-gray-100 bg-gray-50 p-4"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span
@@ -521,10 +708,8 @@ const TaskDetails = () => {
             )}
 
             {canReview && (
-              <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4">
-                <h3 className="text-sm font-medium text-gray-800 mb-3">
-                  Tester Review
-                </h3>
+              <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-5">
+                <SectionTitle title="Tester review" />
                 <textarea
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
@@ -556,11 +741,11 @@ const TaskDetails = () => {
             )}
 
             {canUpdateTodo && totalTodos > 0 && (
-              <div className="flex justify-end pt-4 border-t border-gray-100">
+              <div className="flex justify-end pt-5 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={handleSaveChecklist}
-                  disabled={!hasChecklistChanges || isSavingChecklist}
+                  disabled={!hasSaveableChanges || isSavingChecklist}
                   className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSavingChecklist ? (

@@ -12,7 +12,7 @@ import {
 } from "react-icons/lu";
 
 import AvatarGroup from "./AvatarGroup";
-import { getPriorityColor, getStatusColor } from "../utils/helper";
+import { getPriorityColor, getStatusColor, getTaskId } from "../utils/helper";
 
 const SortIcon = ({ sortConfig, column }) => {
   if (sortConfig.key !== column) return null;
@@ -30,6 +30,7 @@ const TaskListTable = ({
   showProject = false,
   showSearch = false,
   itemsPerPage = 10,
+  taskDetailPath = "/member/tasks",
 }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,10 +77,12 @@ const TaskListTable = ({
   };
 
   const handleRowClick = (task) => {
+    const taskId = getTaskId(task);
+    if (!taskId) return;
     if (onRowClick) {
       onRowClick(task);
     } else {
-      navigate(`/member/tasks/${task._id}`);
+      navigate(`${taskDetailPath}/${taskId}`);
     }
   };
 

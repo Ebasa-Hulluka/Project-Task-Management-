@@ -11,7 +11,7 @@ import TaskStatusTabs from "../../components/TaskStatusTabs";
 import TaskCard from "../../components/Cards/TaskCard";
 import IncrementalListControls from "../../components/IncrementalListControls";
 import useIncrementalList from "../../hooks/useIncrementalList";
-import { getErrorMessage } from "../../utils/helper";
+import { getErrorMessage, getTaskId } from "../../utils/helper";
 
 const MyTasks = () => {
   const { user } = useUser();
@@ -67,12 +67,9 @@ const MyTasks = () => {
     }
   };
 
-  const handleTaskClick = (taskId) => {
-    console.log("Navigating to task:", taskId);
-    navigate(`${taskBasePath}/${taskId}`);
-  };
-
-  const handleUpdateStatus = (taskId) => {
+  const handleTaskClick = (taskOrId) => {
+    const taskId = getTaskId(taskOrId);
+    if (!taskId) return;
     navigate(`${taskBasePath}/${taskId}`);
   };
 
@@ -155,12 +152,12 @@ const MyTasks = () => {
             {filteredTasks?.length > 0 ? (
               visibleTasks.map((task) => (
                 <TaskCard
-                  key={task._id}
+                  key={getTaskId(task) || task.title}
                   task={task}
-                  onClick={() => handleTaskClick(task._id)}
+                  onClick={handleTaskClick}
                   actions={user?.role === "teamMember" ? "member" : false}
-                  onViewDetails={() => handleTaskClick(task._id)}
-                  onUpdateStatus={() => handleUpdateStatus(task._id)}
+                  onViewDetails={handleTaskClick}
+                  onUpdateStatus={handleTaskClick}
                 />
               ))
             ) : (

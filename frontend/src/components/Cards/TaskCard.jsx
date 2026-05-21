@@ -14,7 +14,7 @@ import {
 
 import Progress from "../layouts/Progress";
 import AvatarGroup from "../AvatarGroup";
-import { getPriorityColor, getStatusColor } from "../../utils/helper";
+import { getPriorityColor, getStatusColor, getTaskId } from "../../utils/helper";
 
 const TaskCard = ({
   task,
@@ -33,8 +33,9 @@ const TaskCard = ({
 
   if (!task) return null;
 
+  const taskId = getTaskId(task);
+
   const {
-    _id,
     title,
     description,
     priority,
@@ -61,31 +62,35 @@ const TaskCard = ({
   };
 
   const handleClick = () => {
+    if (!taskId) return;
     if (onClick) {
-      onClick(_id);
+      onClick(taskId);
     } else {
-      navigate(`/member/tasks/${_id}`);
+      navigate(`/member/tasks/${taskId}`);
     }
   };
 
   const handleEdit = (e) => {
     e.stopPropagation();
+    if (!taskId) return;
     if (onEdit) {
-      onEdit(_id);
+      onEdit(taskId);
     }
   };
 
   const handleDelete = (e) => {
     e.stopPropagation();
+    if (!taskId) return;
     if (onDelete) {
-      onDelete(_id);
+      onDelete(taskId);
     }
   };
 
   const handleViewDetails = (e) => {
     e.stopPropagation();
+    if (!taskId) return;
     if (onViewDetails) {
-      onViewDetails(_id);
+      onViewDetails(taskId);
     } else {
       handleClick();
     }
@@ -93,8 +98,9 @@ const TaskCard = ({
 
   const handleUpdateStatus = (e) => {
     e.stopPropagation();
+    if (!taskId) return;
     if (onUpdateStatus) {
-      onUpdateStatus(_id);
+      onUpdateStatus(taskId);
     }
   };
 

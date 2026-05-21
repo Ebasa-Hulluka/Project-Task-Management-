@@ -196,6 +196,97 @@ export const downloadFile = (url, filename) => {
   document.body.removeChild(link);
 };
 
+/** Normalize API/form attachments to { url, name, kind }. */
+export const normalizeTaskAttachments = (items = []) => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (typeof item === "string") {
+        const url = item.trim();
+        if (!url) return null;
+        return {
+          url,
+          name: getAttachmentLabel(url),
+          kind: url.includes("/uploads/tasks/") ? "file" : "link",
+        };
+      }
+      if (item && item.url) {
+        const normalized = {
+          url: String(item.url).trim(),
+          name: item.name || getAttachmentLabel(item.url),
+          kind: item.kind === "file" ? "file" : "link",
+        };
+        if (item.uploadedBy) {
+          normalized.uploadedBy = item.uploadedBy;
+        }
+        return normalized;
+      }
+      return null;
+    })
+    .filter(Boolean);
+};
+
+/** Display name for a task attachment URL or path. */
+export const getAttachmentLabel = (urlOrItem) => {
+  const url =
+    typeof urlOrItem === "string"
+      ? urlOrItem
+      : urlOrItem?.url || urlOrItem?.name || "";
+  if (!url || typeof url !== "string") return "Attachment";
+  const trimmed = url.trim();
+  if (trimmed.startsWith("blob:")) return "Uploaded file";
+  try {
+    const urlObj = new URL(trimmed);
+    const name = decodeURIComponent(urlObj.pathname.split("/").pop() || "");
+    if (name) return name;
+  } catch {
+    // fall through
+  }
+  const segment = trimmed.split("/").pop();
+  return segment || trimmed;
+};
+
+/** Normalize attachment value to an openable URL. */
+export const resolveAttachmentUrl = (url) => {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("blob:") || trimmed.startsWith("data:")) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("/")) {
+    const base =
+      (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+      "http://localhost:8000";
+    return `${String(base).replace(/\/$/, "")}${trimmed}`;
+  }
+  try {
+    return new URL(trimmed).href;
+  } catch {
+    return `https://${trimmed}`;
+  }
+};
+
+/** Open attachment in a new browser tab. */
+export const openAttachment = (urlOrItem) => {
+  const url =
+    typeof urlOrItem === "string" ? urlOrItem : urlOrItem?.url;
+  const resolved = resolveAttachmentUrl(url);
+  if (!resolved) return false;
+  window.open(resolved, "_blank", "noopener,noreferrer");
+  return true;
+};
+
+/** Resolve a Mongo/API task id from a task object or raw id string. */
+export const getTaskId = (task) => {
+  if (!task) return null;
+  if (typeof task === "string") return task;
+  const id = task._id ?? task.id;
+  if (id == null) return null;
+  return typeof id === "object" && typeof id.toString === "function"
+    ? id.toString()
+    : String(id);
+};
+
 // Error handling
 export const getErrorMessage = (error) => {
   if (!error) return "An unexpected error occurred";

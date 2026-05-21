@@ -4,6 +4,11 @@ const { isAdminRole, isTaskViewOnlyRole } = require("../utils/roles");
 const mongoose = require("mongoose");
 const { logActivity } = require("../utils/activityLogger");
 const { syncProjectFromTasks } = require("../utils/projectStatus");
+const {
+  normalizeReferenceAttachments,
+  normalizeCompletionAttachments,
+  serializeTaskAttachments,
+} = require("../utils/taskAttachments");
 
 const syncProjectForTask = async (task) => {
   const projectId = task?.projectId?._id || task?.projectId;
@@ -16,7 +21,8 @@ const populateTask = (query) =>
   query
     .populate("assignedTo", "name email profileImageUrl")
     .populate("tester", "name email profileImageUrl")
-    .populate("projectId", "name");
+    .populate("projectId", "name")
+    .populate("completionAttachments.uploadedBy", "name email profileImageUrl");
 
 const completeOrSendToReview = (task) => {
   task.todoChecklist.forEach((item) => (item.completed = true));
@@ -73,7 +79,13 @@ const getTasks = async (req, res) => {
         ? task.todoChecklist
         : [];
       const completedCount = checklist.filter((item) => item?.completed).length;
-      return { ...task._doc, completedTodoCount: completedCount };
+      const plain =
+        typeof task.toObject === "function"
+          ? task.toObject({ virtuals: true })
+          : task?._doc
+            ? { ...task._doc }
+            : { ...task };
+      return { ...plain, completedTodoCount: completedCount };
     });
 
     // Status summary counts
@@ -148,7 +160,7 @@ const getTaskById = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    res.json(task);
+    res.json(serializeTaskAttachments(task));
   } catch (error) {
     console.error("Error in getTaskById:", error);
     res.status(500).json({
@@ -211,7 +223,7 @@ const createTask = async (req, res) => {
       projectId,
       createdBy: req.user._id,
       todoChecklist,
-      attachments,
+      attachments: normalizeReferenceAttachments(attachments),
     });
 
     const populatedTask = await populateTask(Task.findById(task._id));
@@ -219,7 +231,10 @@ const createTask = async (req, res) => {
 
     res
       .status(201)
-      .json({ message: "Task created successfully", task: populatedTask });
+      .json({
+        message: "Task created successfully",
+        task: serializeTaskAttachments(populatedTask),
+      });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -258,7 +273,9 @@ const updateTask = async (req, res) => {
     task.priority = req.body.priority || task.priority;
     task.dueDate = req.body.dueDate || task.dueDate;
     task.todoChecklist = req.body.todoChecklist || task.todoChecklist;
-    task.attachments = req.body.attachments || task.attachments;
+    if (req.body.attachments !== undefined) {
+      task.attachments = normalizeReferenceAttachments(req.body.attachments);
+    }
     task.projectId = req.body.projectId || task.projectId;
     if (Object.prototype.hasOwnProperty.call(req.body, "tester")) {
       task.tester = req.body.tester || null;
@@ -277,7 +294,10 @@ const updateTask = async (req, res) => {
     await syncProjectForTask(updatedTask);
     const populatedTask = await populateTask(Task.findById(updatedTask._id));
 
-    res.json({ message: "Task updated successfully", task: populatedTask });
+    res.json({
+      message: "Task updated successfully",
+      task: serializeTaskAttachments(populatedTask),
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -392,7 +412,7 @@ const updateTaskChecklist = async (req, res) => {
       return res.status(400).json({ message: "Invalid task ID format" });
     }
 
-    const { todoChecklist } = req.body;
+    const { todoChecklist, completionAttachments } = req.body;
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
     const previousStatus = task.status;
@@ -428,6 +448,25 @@ const updateTaskChecklist = async (req, res) => {
     task.progress =
       totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 
+    const submittingForReview =
+      task.progress === 100 && task.tester && previousStatus !== "In Review";
+
+    if (completionAttachments !== undefined) {
+      task.completionAttachments = normalizeCompletionAttachments(
+        completionAttachments,
+        req.user._id,
+      );
+    }
+
+    if (submittingForReview && req.user.role === "teamMember") {
+      if (!task.completionAttachments?.length) {
+        return res.status(400).json({
+          message:
+            "Add at least one delivery attachment (file or link) before submitting for testing.",
+        });
+      }
+    }
+
     // Auto-mark task as completed if all items are checked
     if (task.progress === 100) {
       task.status = task.tester ? "In Review" : "Completed";
@@ -448,9 +487,32 @@ const updateTaskChecklist = async (req, res) => {
     const updatedTask = await populateTask(Task.findById(req.params.id));
     await syncProjectForTask(task);
 
-    res.json({ message: "Task checklist updated", task: updatedTask });
+    res.json({
+      message: "Task checklist updated",
+      task: serializeTaskAttachments(updatedTask),
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// @desc    Upload a task attachment file (reference or delivery)
+// @route   POST /api/tasks/upload-attachment
+// @access  Private
+const uploadTaskAttachment = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const host = `${req.protocol}://${req.get("host")}`;
+    res.status(201).json({
+      url: `${host}/uploads/tasks/${req.file.filename}`,
+      name: req.file.originalname,
+      kind: "file",
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Upload failed", error: error.message });
   }
 };
 
@@ -512,11 +574,10 @@ const reviewTask = async (req, res) => {
       );
     }
 
-    const updatedTask = await Task.findById(task._id)
-      .populate("assignedTo", "name email profileImageUrl")
-      .populate("tester", "name email profileImageUrl")
-      .populate("projectId", "name")
-      .populate("reviewHistory.tester", "name email profileImageUrl");
+    const updatedTask = await populateTask(Task.findById(task._id)).populate(
+      "reviewHistory.tester",
+      "name email profileImageUrl",
+    );
 
     await syncProjectForTask(task);
 
@@ -525,7 +586,7 @@ const reviewTask = async (req, res) => {
         result === "passed"
           ? "Task approved and completed"
           : "Bug sent back to developer",
-      task: updatedTask,
+      task: serializeTaskAttachments(updatedTask),
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -746,6 +807,7 @@ module.exports = {
   deleteTask,
   updateTaskStatus,
   updateTaskChecklist,
+  uploadTaskAttachment,
   reviewTask,
   getTasksByProject,
   getDashboardData,

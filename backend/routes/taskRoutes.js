@@ -1,6 +1,7 @@
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
+const taskUpload = require("../middlewares/taskUploadMiddleware");
 const {
   getDashboardData,
   getUserDashboardData,
@@ -11,6 +12,7 @@ const {
   deleteTask,
   updateTaskStatus,
   updateTaskChecklist,
+  uploadTaskAttachment,
   reviewTask,
   getTasksByProject,
 } = require("../controllers/taskController");
@@ -31,6 +33,12 @@ router
   .post(authorize("projectManager"), createTask);
 
 router.get("/project/:projectId", getTasksByProject);
+
+router.post(
+  "/upload-attachment",
+  taskUpload.single("file"),
+  uploadTaskAttachment,
+);
 
 router
   .route("/:id")

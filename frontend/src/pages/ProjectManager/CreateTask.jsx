@@ -407,11 +407,13 @@ const CreateTask = () => {
               />
             </div>
 
-            {/* Attachments */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Attachments
+                Reference attachments
               </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Requirements, specs, or repo links the team needs for this task.
+              </p>
               <AddAttachmentsInput
                 attachments={formData.attachments}
                 onChange={handleAttachmentsChange}

@@ -6,7 +6,6 @@ import {
   LuLogOut,
   LuFolder,
   LuUsersRound,
-  LuFileText,
   LuSettings,
   LuChartBar,
 } from "react-icons/lu";
@@ -119,12 +118,6 @@ export const SIDE_MENU_MEMBER_DATA = [
   },
   {
     id: "03",
-    label: "Task Details",
-    icon: LuFileText,
-    path: "/member/task-details",
-  },
-  {
-    id: "04",
     label: "Logout",
     icon: LuLogOut,
     path: "logout",

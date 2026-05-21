@@ -51,6 +51,7 @@ export const API_PATHS = {
     REVIEW_TASK: (taskId) => `/api/tasks/${taskId}/review`,
     UPDATE_TODO_CHECKLIST: (taskId) => `/api/tasks/${taskId}/todo`,
     UPDATE_TODO: (taskId) => `/api/tasks/${taskId}/todo`,
+    UPLOAD_ATTACHMENT: "/api/tasks/upload-attachment",
     GET_TASKS_BY_PROJECT: (projectId) => `/api/tasks/project/${projectId}`,
   },
   PROJECTS: {
