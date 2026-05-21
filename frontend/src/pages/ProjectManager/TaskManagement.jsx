@@ -12,8 +12,12 @@ import IncrementalListControls from "../../components/IncrementalListControls";
 import useIncrementalList from "../../hooks/useIncrementalList";
 import { getErrorMessage } from "../../utils/helper";
 import DeleteAlert from "../../components/DeleteAlert";
+import { isTaskViewOnlyRole } from "../../utils/rolePaths";
+import { useUser } from "../../context/userContext";
 
 const TaskManagement = () => {
+  const { user } = useUser();
+  const isViewOnly = isTaskViewOnlyRole(user?.role);
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -31,12 +35,11 @@ const TaskManagement = () => {
     totalCount: totalTaskCount,
     remainingCount: remainingTasksCount,
     showMore: showMoreTasks,
-  } = useIncrementalList(filteredTasks, 4, [
-    filteredTasks.length,
-    searchTerm,
-    filterStatus,
-    filterProject,
-  ]);
+  } = useIncrementalList(
+    filteredTasks,
+    { batchSize: 6, columns: 3 },
+    [filteredTasks.length, searchTerm, filterStatus, filterProject],
+  );
 
   const navigate = useNavigate();
 
@@ -164,13 +167,15 @@ const TaskManagement = () => {
             </p>
           </div>
 
-          <button
-            className="btn-primary flex items-center gap-2"
-            onClick={handleCreateTask}
-          >
-            <LuPlus className="text-lg" />
-            New Task
-          </button>
+          {!isViewOnly && (
+            <button
+              className="btn-primary flex items-center gap-2"
+              onClick={handleCreateTask}
+            >
+              <LuPlus className="text-lg" />
+              New Task
+            </button>
+          )}
         </div>
 
         {/* Tabs */}
@@ -245,18 +250,20 @@ const TaskManagement = () => {
                   key={task._id}
                   task={task}
                   onClick={() => handleTaskClick(task._id)}
+                  actions={!isViewOnly ? "manager" : false}
                   onEdit={() => handleEditTask(task._id)}
                   onDelete={() => handleDeleteTask(task._id)}
-                  showActions={true}
                 />
               ))
             ) : (
               <div className="col-span-full text-center py-12">
                 <LuClipboardCheck className="text-5xl text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 mb-4">No tasks found</p>
-                <button className="btn-primary" onClick={handleCreateTask}>
-                  Create Your First Task
-                </button>
+                {!isViewOnly && (
+                  <button className="btn-primary" onClick={handleCreateTask}>
+                    Create Your First Task
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -268,7 +275,7 @@ const TaskManagement = () => {
             totalCount={totalTaskCount}
             remainingCount={remainingTasksCount}
             onShowMore={showMoreTasks}
-            batchSize={4}
+            batchSize={6}
             itemLabel="tasks"
           />
         )}

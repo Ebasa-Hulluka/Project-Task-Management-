@@ -28,7 +28,7 @@ router.get("/user-dashboard-data", getUserDashboardData);
 router
   .route("/")
   .get(getTasks)
-  .post(authorize("admin", "projectManager"), createTask);
+  .post(authorize("projectManager"), createTask);
 
 router.get("/project/:projectId", getTasksByProject);
 
@@ -36,11 +36,19 @@ router
   .route("/:id")
   .get(getTaskById)
   .put(updateTask)
-  .delete(authorize("admin", "projectManager"), deleteTask);
+  .delete(authorize("projectManager"), deleteTask);
 
 // Task Action Routes
-router.put("/:id/status", authorize("teamMember"), updateTaskStatus);
-router.put("/:id/todo", authorize("teamMember"), updateTaskChecklist);
+router.put(
+  "/:id/status",
+  authorize("teamMember", "projectManager"),
+  updateTaskStatus,
+);
+router.put(
+  "/:id/todo",
+  authorize("teamMember", "projectManager"),
+  updateTaskChecklist,
+);
 router.put("/:id/review", reviewTask);
 
 module.exports = router;

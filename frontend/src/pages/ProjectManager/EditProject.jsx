@@ -10,10 +10,14 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { PROJECT_STATUS_DATA } from "../../utils/data";
 import { getErrorMessage } from "../../utils/helper";
+import { getProjectPaths, isTaskViewOnlyRole } from "../../utils/rolePaths";
+import { useUser } from "../../context/userContext";
 
 const EditProject = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useUser();
+  const projectPaths = getProjectPaths(user?.role);
 
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -28,6 +32,15 @@ const EditProject = () => {
     team: [],
   });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (isTaskViewOnlyRole(user?.role)) {
+      toast.error(
+        "Super Admins and Admins can only view projects. Editing projects is not allowed.",
+      );
+      navigate(projectPaths.list, { replace: true });
+    }
+  }, [user?.role, navigate, projectPaths.list]);
 
   // Fetch project details
   const fetchProjectDetails = async () => {
@@ -55,7 +68,7 @@ const EditProject = () => {
     } catch (error) {
       console.error("Error fetching project:", error);
       toast.error(getErrorMessage(error) || "Failed to load project details");
-      navigate("/manager/projects");
+      navigate(projectPaths.list);
     } finally {
       setFetchLoading(false);
     }
@@ -138,7 +151,7 @@ const EditProject = () => {
 
       if (response.data) {
         toast.success("Project updated successfully!");
-        navigate(`/manager/projects/${id}`);
+        navigate(projectPaths.detail(id));
       }
     } catch (error) {
       console.error("Error updating project:", error);
@@ -153,7 +166,7 @@ const EditProject = () => {
     try {
       await axiosInstance.delete(API_PATHS.PROJECTS.DELETE_PROJECT(id));
       toast.success("Project deleted successfully");
-      navigate("/manager/projects");
+      navigate(projectPaths.list);
     } catch (error) {
       console.error("Error deleting project:", error);
       toast.error(getErrorMessage(error) || "Failed to delete project");

@@ -19,13 +19,13 @@ router.use(protect);
 router
   .route("/")
   .get(getAllProjects) // All authenticated users can view (filtered by role)
-  .post(authorize("admin", "projectManager"), createProject);
+  .post(authorize("projectManager"), createProject);
 
 router
   .route("/:id")
   .get(getProjectById)
-  .put(authorize("admin", "projectManager"), updateProject)
-  .delete(authorize("admin", "projectManager"), deleteProject);
+  .put(authorize("projectManager"), updateProject)
+  .delete(authorize("projectManager"), deleteProject);
 
 router.get("/:id/progress", getProjectProgress);
 

@@ -67,8 +67,8 @@ const isCreator = (model) => {
         return res.status(404).json({ message: "Resource not found" });
       }
 
-      // Admin can do anything
-      if (normalizeRole(req.user.role) === "admin") {
+      // Admin / Super Admin can do anything
+      if (["superAdmin", "admin"].includes(normalizeRole(req.user.role))) {
         return next();
       }
 

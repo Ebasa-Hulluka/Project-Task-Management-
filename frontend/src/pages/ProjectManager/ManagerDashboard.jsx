@@ -21,11 +21,13 @@ import TaskListTable from "../../components/TaskListTable";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import { getGreeting, addThousandSeparator } from "../../utils/helper";
+import { isTaskViewOnlyRole } from "../../utils/rolePaths";
 
 const COLORS = ["#194f87", "#2e6aa3", "#0f5841"];
 
 const ManagerDashboard = () => {
   const { user } = useUser();
+  const isViewOnly = isTaskViewOnlyRole(user?.role);
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -277,12 +279,14 @@ const ManagerDashboard = () => {
           ) : (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">No projects yet</p>
-              <button
-                onClick={() => navigate("/manager/projects/create")}
-                className="btn-primary"
-              >
-                Create Your First Project
-              </button>
+              {!isViewOnly && (
+                <button
+                  onClick={() => navigate("/manager/projects/create")}
+                  className="btn-primary"
+                >
+                  Create Your First Project
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -50,12 +50,18 @@ const AvatarGroup = ({
 
   return (
     <div className="flex items-center -space-x-2 rtl:space-x-reverse">
-      {visibleItems.map((item, index) => (
+      {visibleItems.map((item, index) => {
+        const displayName = item.name || item.email || "User";
+
+        return (
         <div
-          key={index}
+          key={item._id || item.email || `${displayName}-${index}`}
           className={`relative ${getContainerSize()} rounded-full ring-2 ring-white hover:ring-primary hover:z-10 transition-all cursor-pointer group`}
-          onClick={() => handleUserClick(item, index)}
-          title={showTooltip ? item.name : undefined}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleUserClick(item, index);
+          }}
+          title={displayName}
         >
           {item.profileImageUrl ? (
             <img
@@ -79,11 +85,12 @@ const AvatarGroup = ({
           {/* Tooltip */}
           {showTooltip && (
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-              {item.name}
+              {displayName}
             </div>
           )}
         </div>
-      ))}
+      );
+      })}
 
       {remainingCount > 0 && (
         <div

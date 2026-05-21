@@ -8,6 +8,8 @@ import {
   LuCircleAlert,
   LuCalendar,
   LuUsers,
+  LuEye,
+  LuClipboardList,
 } from "react-icons/lu";
 
 import Progress from "../layouts/Progress";
@@ -19,7 +21,12 @@ const TaskCard = ({
   onClick,
   onEdit,
   onDelete,
+  onViewDetails,
+  onUpdateStatus,
+  /** @deprecated Use actions="manager" instead */
   showActions = false,
+  /** "manager" = Edit/Delete, "member" = View details & update status */
+  actions = false,
   compact = false,
 }) => {
   const navigate = useNavigate();
@@ -74,6 +81,27 @@ const TaskCard = ({
       onDelete(_id);
     }
   };
+
+  const handleViewDetails = (e) => {
+    e.stopPropagation();
+    if (onViewDetails) {
+      onViewDetails(_id);
+    } else {
+      handleClick();
+    }
+  };
+
+  const handleUpdateStatus = (e) => {
+    e.stopPropagation();
+    if (onUpdateStatus) {
+      onUpdateStatus(_id);
+    }
+  };
+
+  const actionMode = actions || (showActions ? "manager" : false);
+  const showManagerActions = actionMode === "manager";
+  const showMemberActions = actionMode === "member";
+  const canUpdateStatus = true;
 
   // Compact view for lists/grids
   if (compact) {
@@ -231,21 +259,45 @@ const TaskCard = ({
         )}
       </div>
 
-      {/* Action Buttons (for managers/admin) */}
-      {showActions && (
+      {showManagerActions && (
         <div className="flex items-center justify-end gap-2 px-4 mt-3 pt-2 border-t border-gray-100">
           <button
+            type="button"
             onClick={handleEdit}
             className="text-xs text-blue-600 hover:text-blue-800 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
           >
             Edit
           </button>
           <button
+            type="button"
             onClick={handleDelete}
             className="text-xs text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50 transition-colors"
           >
             Delete
           </button>
+        </div>
+      )}
+
+      {showMemberActions && (
+        <div className="flex items-center justify-end gap-2 px-4 mt-3 pt-2 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={handleViewDetails}
+            className="text-xs text-gray-700 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+          >
+            <LuEye className="text-sm" />
+            View Details
+          </button>
+          {canUpdateStatus && (
+            <button
+              type="button"
+              onClick={handleUpdateStatus}
+              className="text-xs text-primary hover:text-primary/80 px-3 py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-1.5 font-medium"
+            >
+              <LuClipboardList className="text-sm" />
+              Update Status
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -10,6 +10,10 @@ import ProjectCard from "../../components/Cards/ProjectCard";
 import IncrementalListControls from "../../components/IncrementalListControls";
 import useIncrementalList from "../../hooks/useIncrementalList";
 import { PROJECT_STATUS_DATA } from "../../utils/data";
+import {
+  getProjectDisplayName,
+  sortProjectsByDisplayName,
+} from "../../utils/projectDisplay";
 
 const ManageProjects = () => {
   const [projects, setProjects] = useState([]);
@@ -37,8 +41,9 @@ const ManageProjects = () => {
       );
 
       if (response.data) {
-        setProjects(response.data);
-        setFilteredProjects(response.data);
+        const sorted = sortProjectsByDisplayName(response.data);
+        setProjects(sorted);
+        setFilteredProjects(sorted);
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -64,14 +69,16 @@ const ManageProjects = () => {
 
     // Apply search
     if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (project) =>
-          project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          project.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+          getProjectDisplayName(project.name).toLowerCase().includes(query) ||
+          project.name.toLowerCase().includes(query) ||
+          project.description?.toLowerCase().includes(query),
       );
     }
 
-    setFilteredProjects(filtered);
+    setFilteredProjects(sortProjectsByDisplayName(filtered));
   }, [searchTerm, statusFilter, projects]);
 
   useEffect(() => {
@@ -95,7 +102,7 @@ const ManageProjects = () => {
           <div>
             <h2 className="text-xl md:text-2xl font-medium">Projects</h2>
             <p className="text-sm text-gray-500 mt-1">
-              View and monitor all projects
+              View all projects (read-only)
             </p>
           </div>
         </div>

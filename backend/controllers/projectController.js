@@ -3,12 +3,24 @@ const Task = require("../models/Task");
 const Team = require("../models/Team");
 const mongoose = require("mongoose");
 const { notifyAdmins } = require("../utils/notificationService");
+const { isAdminRole, isTaskViewOnlyRole } = require("../utils/roles");
+const {
+  enrichProjectWithTaskMetrics,
+  syncProjectFromTasks,
+} = require("../utils/projectStatus");
 
 // @desc    Create a new project
 // @route   POST /api/projects
-// @access  Private (Admin, Project Manager)
+// @access  Private (Project Manager)
 const createProject = async (req, res) => {
   try {
+    if (isTaskViewOnlyRole(req.user.role)) {
+      return res.status(403).json({
+        message:
+          "Super Admins and Admins can only view projects. Creating projects is not allowed for your role.",
+      });
+    }
+
     const { name, description, startDate, endDate, status, team } = req.body;
 
     if (!name) {
@@ -78,8 +90,8 @@ const getAllProjects = async (req, res) => {
     let projects;
     let query = {};
 
-    if (req.user.role === "admin") {
-      // Admin sees all projects
+    if (isAdminRole(req.user.role)) {
+      // Admin / Super Admin see all projects
       projects = await Project.find()
         .populate("team", "name")
         .populate("createdBy", "name email");
@@ -99,33 +111,12 @@ const getAllProjects = async (req, res) => {
         .populate("createdBy", "name email");
     }
 
-    // Add task counts and progress to each project
     projects = await Promise.all(
       projects.map(async (project) => {
         const tasks = await Task.find({ projectId: project._id });
-        const totalTasks = tasks.length;
-        const completedTasks = tasks.filter(
-          (t) => t.status === "Completed",
-        ).length;
-        const inProgressTasks = tasks.filter(
-          (t) => t.status === "In Progress",
-        ).length;
-        const pendingTasks = tasks.filter((t) => t.status === "Pending").length;
-
-        // Calculate project progress based on tasks
-        const progress =
-          totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-        return {
-          ...project._doc,
-          taskSummary: {
-            total: totalTasks,
-            completed: completedTasks,
-            inProgress: inProgressTasks,
-            pending: pendingTasks,
-          },
-          progress,
-        };
+        return await enrichProjectWithTaskMetrics(project._doc, tasks, {
+          persist: true,
+        });
       }),
     );
 
@@ -167,27 +158,13 @@ const getProjectById = async (req, res) => {
       "name email profileImageUrl",
     );
 
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((t) => t.status === "Completed").length;
-    const inProgressTasks = tasks.filter(
-      (t) => t.status === "In Progress",
-    ).length;
-    const pendingTasks = tasks.filter((t) => t.status === "Pending").length;
-
-    // Calculate project progress
-    const progress =
-      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const enriched = await enrichProjectWithTaskMetrics(project._doc, tasks, {
+      persist: true,
+    });
 
     res.json({
-      ...project._doc,
+      ...enriched,
       tasks,
-      taskSummary: {
-        total: totalTasks,
-        completed: completedTasks,
-        inProgress: inProgressTasks,
-        pending: pendingTasks,
-      },
-      progress,
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -211,8 +188,15 @@ const updateProject = async (req, res) => {
     }
 
     // Check authorization
+    if (isTaskViewOnlyRole(req.user.role)) {
+      return res.status(403).json({
+        message:
+          "Super Admins and Admins can only view projects. Editing projects is not allowed for your role.",
+      });
+    }
+
     if (
-      req.user.role !== "admin" &&
+      req.user.role !== "projectManager" &&
       project.createdBy.toString() !== req.user._id.toString()
     ) {
       return res
@@ -300,8 +284,15 @@ const deleteProject = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
+    if (isTaskViewOnlyRole(req.user.role)) {
+      return res.status(403).json({
+        message:
+          "Super Admins and Admins can only view projects. Deleting projects is not allowed for your role.",
+      });
+    }
+
     if (
-      req.user.role !== "admin" &&
+      req.user.role !== "projectManager" &&
       project.createdBy.toString() !== req.user._id.toString()
     ) {
       return res
@@ -340,31 +331,19 @@ const getProjectProgress = async (req, res) => {
       return res.status(400).json({ message: "Invalid project ID format" });
     }
 
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
     const tasks = await Task.find({ projectId: id });
-
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((t) => t.status === "Completed").length;
-    const inProgressTasks = tasks.filter(
-      (t) => t.status === "In Progress",
-    ).length;
-    const pendingTasks = tasks.filter((t) => t.status === "Pending").length;
-
-    // Calculate progress percentage
-    const progress =
-      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    // Update project progress in database
-    await Project.findByIdAndUpdate(id, { progress });
+    const synced = await syncProjectFromTasks(id);
 
     res.json({
       projectId: id,
-      progress,
-      taskSummary: {
-        total: totalTasks,
-        completed: completedTasks,
-        inProgress: inProgressTasks,
-        pending: pendingTasks,
-      },
+      status: synced?.status ?? project.status,
+      progress: synced?.progress ?? project.progress,
+      taskSummary: synced?.taskSummary,
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -378,4 +357,5 @@ module.exports = {
   updateProject,
   deleteProject,
   getProjectProgress,
+  syncProjectFromTasks,
 };

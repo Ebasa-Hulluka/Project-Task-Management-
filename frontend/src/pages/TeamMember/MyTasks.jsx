@@ -28,7 +28,11 @@ const MyTasks = () => {
     totalCount: totalTaskCount,
     remainingCount: remainingTasksCount,
     showMore: showMoreTasks,
-  } = useIncrementalList(filteredTasks, 4, [filteredTasks.length, searchTerm, filterStatus]);
+  } = useIncrementalList(
+    filteredTasks,
+    { batchSize: 6, columns: 3 },
+    [filteredTasks.length, searchTerm, filterStatus],
+  );
 
   const navigate = useNavigate();
   const taskBasePath = user?.role === "tester" ? "/tester/tasks" : "/member/tasks";
@@ -69,7 +73,7 @@ const MyTasks = () => {
   };
 
   const handleUpdateStatus = (taskId) => {
-    navigate(`/member/tasks/${taskId}`, { state: { openStatusEditor: true } });
+    navigate(`${taskBasePath}/${taskId}`);
   };
 
   // Apply search filter
@@ -154,8 +158,9 @@ const MyTasks = () => {
                   key={task._id}
                   task={task}
                   onClick={() => handleTaskClick(task._id)}
-                  onStatusUpdate={() => handleUpdateStatus(task._id)}
-                  showActions={user?.role !== "tester"}
+                  actions={user?.role === "teamMember" ? "member" : false}
+                  onViewDetails={() => handleTaskClick(task._id)}
+                  onUpdateStatus={() => handleUpdateStatus(task._id)}
                 />
               ))
             ) : (
@@ -181,7 +186,7 @@ const MyTasks = () => {
             totalCount={totalTaskCount}
             remainingCount={remainingTasksCount}
             onShowMore={showMoreTasks}
-            batchSize={4}
+            batchSize={6}
             itemLabel="tasks"
           />
         )}

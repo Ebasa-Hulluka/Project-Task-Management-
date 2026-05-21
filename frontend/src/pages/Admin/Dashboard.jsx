@@ -69,31 +69,12 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch recent tasks if not included in dashboard data
-  const getRecentTasks = async () => {
-    try {
-      const response = await axiosInstance.get(API_PATHS.TASKS.GET_ALL_TASKS);
-      if (response.data && Array.isArray(response.data.tasks)) {
-        // Get the 5 most recent tasks
-        const sorted = [...response.data.tasks].sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-        );
-        setRecentTasks(sorted.slice(0, 5));
-      }
-    } catch (error) {
-      console.error("Error fetching recent tasks:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const onSeeMore = () => {
     navigate("/admin/tasks");
   };
 
   useEffect(() => {
     getDashboardData();
-    getRecentTasks();
   }, []);
 
   // Calculate statistics

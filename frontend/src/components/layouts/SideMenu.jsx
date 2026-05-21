@@ -14,6 +14,7 @@ import {
   LuPlus,
   LuCalendar,
   LuMessageSquare,
+  LuUserCheck,
 } from "react-icons/lu";
 import { toast } from "react-hot-toast";
 
@@ -112,6 +113,18 @@ const getMenuItems = (role) => {
       label: "Tasks",
       path: "/manager/tasks",
       icon: LuClipboardCheck,
+    },
+    {
+      id: "teams",
+      label: "Teams",
+      path: "/manager/teams",
+      icon: LuUsers,
+    },
+    {
+      id: "testers",
+      label: "Testers",
+      path: "/manager/testers",
+      icon: LuUserCheck,
     },
     {
       id: "calendar",

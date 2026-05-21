@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import {
   LuArrowLeft,
   LuSquareArrowOutUpRight,
   LuCircleCheck,
   LuCircleAlert,
-  LuPencil,
   LuBug,
   LuClock,
   LuSave,
+  LuCalendar,
+  LuUsers,
+  LuClipboardList,
 } from "react-icons/lu";
 
 import DashboardLayout from "../../components/layouts/DashboardLayout";
@@ -23,28 +25,49 @@ import {
   getErrorMessage,
 } from "../../utils/helper";
 import { useUser } from "../../context/userContext";
+import { isTaskViewOnlyRole } from "../../utils/rolePaths";
 
-const TodoCheckList = ({ text, isChecked, onChange, disabled, loading }) => {
-  return (
-    <div className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-      <label className="flex items-center gap-3 flex-1 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={isChecked}
-          onChange={onChange}
-          disabled={disabled}
-          className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded-sm outline-none cursor-pointer disabled:cursor-not-allowed"
-        />
-        <p
-          className={`text-[13px] ${isChecked ? "text-gray-400 line-through" : "text-gray-800"}`}
-        >
-          {text}
-        </p>
-      </label>
-      {loading && <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0"></span>}
+const TodoCheckList = ({ text, isChecked, onChange, disabled, loading }) => (
+  <label
+    className={`flex items-center justify-between gap-3 p-3.5 rounded-lg border border-gray-100 bg-white transition-colors ${
+      disabled ? "cursor-default opacity-90" : "cursor-pointer hover:border-primary/30 hover:bg-primary/5"
+    }`}
+  >
+    <span className="flex items-center gap-3 flex-1 min-w-0">
+      <input
+        type="checkbox"
+        checked={isChecked}
+        onChange={onChange}
+        disabled={disabled}
+        className="w-4 h-4 shrink-0 text-primary bg-gray-100 border-gray-300 rounded outline-none cursor-pointer disabled:cursor-not-allowed"
+      />
+      <span
+        className={`text-sm ${isChecked ? "text-gray-400 line-through" : "text-gray-800"}`}
+      >
+        {text}
+      </span>
+    </span>
+    {loading && (
+      <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+    )}
+  </label>
+);
+
+const DetailTile = ({ icon: Icon, label, children }) => (
+  <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 h-full">
+    <div className="flex items-center gap-2 mb-2">
+      {Icon && (
+        <span className="inline-flex p-1.5 rounded-lg bg-white border border-gray-100">
+          <Icon className="text-gray-500 text-base" />
+        </span>
+      )}
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
     </div>
-  );
-};
+    <div className="text-sm font-medium text-gray-900">{children}</div>
+  </div>
+);
 
 const Attachment = ({ link, index, onClick }) => {
   return (
@@ -64,60 +87,32 @@ const Attachment = ({ link, index, onClick }) => {
   );
 };
 
-const InfoBox = ({ label, value }) => {
-  const hasValue = value !== undefined && value !== null && value !== "";
+const cloneChecklist = (list = []) =>
+  list.map((item) => ({
+    ...item,
+    completed: Boolean(item.completed),
+  }));
 
-  return (
-    <div>
-      <label className="text-xs font-medium text-slate-500">{label}</label>
-      <div className="text-[12px] md:text-[13px] font-medium text-gray-700 mt-0.5">
-        {hasValue ? value : "N/A"}
-      </div>
-    </div>
+const checklistSignature = (list = []) =>
+  JSON.stringify(
+    list.map((item) => ({
+      text: item.text,
+      completed: Boolean(item.completed),
+    })),
   );
-};
-
-const STATUS_OPTIONS = [
-  {
-    value: "Pending",
-    label: "Pending",
-    color: "bg-gray-100 text-gray-700",
-    icon: LuClock,
-  },
-  {
-    value: "In Progress",
-    label: "In Progress",
-    color: "bg-blue-100 text-blue-700",
-    icon: LuClock,
-  },
-  {
-    value: "Completed",
-    label: "Completed",
-    color: "bg-green-100 text-green-700",
-    icon: LuCircleCheck,
-  },
-];
 
 const TaskDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useUser();
 
   const [task, setTask] = useState(null);
+  const [draftChecklist, setDraftChecklist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isUpdatingTodo, setIsUpdatingTodo] = useState(false);
-  const [updatingTodoIndex, setUpdatingTodoIndex] = useState(null);
+  const [isSavingChecklist, setIsSavingChecklist] = useState(false);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewLoading, setReviewLoading] = useState("");
-  const [showStatusEditor, setShowStatusEditor] = useState(
-    Boolean(location.state?.openStatusEditor),
-  );
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [statusProgress, setStatusProgress] = useState(0);
-  const [statusComment, setStatusComment] = useState("");
-  const [statusUpdating, setStatusUpdating] = useState(false);
 
   const getStatusTagColor = (status) => {
     switch (status) {
@@ -141,6 +136,7 @@ const TaskDetails = () => {
 
       if (response.data) {
         setTask(response.data);
+        setDraftChecklist(cloneChecklist(response.data.todoChecklist));
         setError(null);
       }
     } catch (apiError) {
@@ -152,44 +148,52 @@ const TaskDetails = () => {
     }
   };
 
-  const updateTodoChecklist = async (index) => {
-    if (!task || isUpdatingTodo || task.status === "Completed") return;
+  const toggleDraftChecklistItem = (index) => {
+    if (!task) return;
 
-    const previousChecklist = (task.todoChecklist || []).map((item) => ({
-      ...item,
-    }));
-
-    const nextChecklist = previousChecklist.map((item, itemIndex) =>
-      itemIndex === index ? { ...item, completed: !item.completed } : item,
+    setDraftChecklist((prev) =>
+      prev.map((item, itemIndex) =>
+        itemIndex === index
+          ? { ...item, completed: !item.completed }
+          : item,
+      ),
     );
+  };
 
-    setTask((prev) => ({
-      ...prev,
-      todoChecklist: nextChecklist,
-    }));
+  const handleSaveChecklist = async () => {
+    if (!task || isSavingChecklist) return;
+    if (isTaskViewOnlyRole(user?.role)) {
+      toast.error(
+        "Super Admins and Admins can only view tasks. Checklist updates are not allowed for your role.",
+      );
+      return;
+    }
 
-    setIsUpdatingTodo(true);
-    setUpdatingTodoIndex(index);
+    if (
+      checklistSignature(draftChecklist) ===
+      checklistSignature(task.todoChecklist)
+    ) {
+      toast.error("No checklist changes to save");
+      return;
+    }
+
+    setIsSavingChecklist(true);
 
     try {
       const response = await axiosInstance.put(API_PATHS.TASKS.UPDATE_TODO(id), {
-        todoChecklist: nextChecklist,
+        todoChecklist: draftChecklist,
       });
 
       const updatedTask = response?.data?.task || response?.data;
       if (updatedTask) {
         setTask(updatedTask);
+        setDraftChecklist(cloneChecklist(updatedTask.todoChecklist));
       }
-      toast.success("Checklist updated");
+      toast.success("Task updated successfully");
     } catch (apiError) {
-      setTask((prev) => ({
-        ...prev,
-        todoChecklist: previousChecklist,
-      }));
       toast.error(getErrorMessage(apiError) || "Failed to update checklist");
     } finally {
-      setIsUpdatingTodo(false);
-      setUpdatingTodoIndex(null);
+      setIsSavingChecklist(false);
     }
   };
 
@@ -199,57 +203,6 @@ const TaskDetails = () => {
       safeLink = `https://${safeLink}`;
     }
     window.open(safeLink, "_blank");
-  };
-
-  const openStatusEditor = () => {
-    if (!task) return;
-    setSelectedStatus(task.status);
-    setStatusProgress(task.progress || 0);
-    setStatusComment("");
-    setShowStatusEditor(true);
-  };
-
-  const closeStatusEditor = () => {
-    setShowStatusEditor(false);
-    setStatusComment("");
-  };
-
-  const handleStatusSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!selectedStatus) {
-      toast.error("Please select a status");
-      return;
-    }
-
-    if (selectedStatus === task.status && statusProgress === (task.progress || 0)) {
-      toast.error("No changes detected");
-      return;
-    }
-
-    setStatusUpdating(true);
-
-    try {
-      if (selectedStatus !== task.status) {
-        const response = await axiosInstance.put(
-          API_PATHS.TASKS.UPDATE_TASK_STATUS(id),
-          { status: selectedStatus },
-        );
-        const updatedTask = response?.data?.task || response?.data;
-        if (updatedTask) {
-          setTask(updatedTask);
-        } else {
-          setTask((prev) => ({ ...prev, status: selectedStatus }));
-        }
-      }
-
-      toast.success("Task status updated successfully!");
-      closeStatusEditor();
-    } catch (apiError) {
-      toast.error(getErrorMessage(apiError));
-    } finally {
-      setStatusUpdating(false);
-    }
   };
 
   const handleReviewTask = async (result) => {
@@ -291,15 +244,6 @@ const TaskDetails = () => {
     }
   }, [id]);
 
-  useEffect(() => {
-    if (task && location.state?.openStatusEditor) {
-      setSelectedStatus(task.status);
-      setStatusProgress(task.progress || 0);
-      setShowStatusEditor(true);
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [task, location.pathname, location.state?.openStatusEditor, navigate]);
-
   if (loading) {
     return (
       <DashboardLayout activeMenu="My Tasks">
@@ -337,58 +281,74 @@ const TaskDetails = () => {
     );
   }
 
-  const completedTodos =
-    task.todoChecklist?.filter((t) => t.completed).length || 0;
-  const totalTodos = task.todoChecklist?.length || 0;
-  const progress =
-    totalTodos > 0
-      ? Math.round((completedTodos / totalTodos) * 100)
-      : task.progress || 0;
   const isTester = user?.role === "tester";
   const isAssigned = (task.assignedTo || []).some((assignee) => {
     const assigneeId =
       assignee && typeof assignee === "object" ? assignee._id : assignee;
     return String(assigneeId) === String(user?._id);
   });
-  const canUpdateStatus =
-    user?.role === "teamMember" && isAssigned && task.status !== "Completed";
-  const canUpdateTodo =
-    user?.role === "teamMember" && isAssigned && task.status !== "Completed";
+  const canUpdateTodo = user?.role === "teamMember" && isAssigned;
+  const activeChecklist = canUpdateTodo ? draftChecklist : task.todoChecklist || [];
+  const completedTodos =
+    activeChecklist.filter((t) => t.completed).length || 0;
+  const totalTodos = activeChecklist.length || 0;
+  const progress =
+    totalTodos > 0
+      ? Math.round((completedTodos / totalTodos) * 100)
+      : task.progress || 0;
+  const hasChecklistChanges =
+    canUpdateTodo &&
+    checklistSignature(draftChecklist) !==
+      checklistSignature(task.todoChecklist);
+  const showCompletedBanner =
+    task.status === "Completed" &&
+    !hasChecklistChanges &&
+    totalTodos > 0 &&
+    completedTodos === totalTodos;
   const testerId =
     task.tester && typeof task.tester === "object" ? task.tester._id : task.tester;
+  const isViewOnlyTask = isTaskViewOnlyRole(user?.role);
   const canReview =
+    !isViewOnlyTask &&
     task.status === "In Review" &&
     ((isTester && testerId === user?._id) ||
-      user?.role === "admin" ||
-      user?.role === "superAdmin" ||
       user?.role === "projectManager");
+
+  const assignedNames =
+    task.assignedTo?.map((u) => u.name).filter(Boolean).join(", ") || "Unassigned";
+  const testerName =
+    task.tester && typeof task.tester === "object"
+      ? task.tester.name
+      : "Unassigned";
 
   return (
     <DashboardLayout activeMenu="My Tasks">
-      <div className="my-5 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
+      <div className="my-5 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Go back"
           >
             <LuArrowLeft className="text-xl" />
           </button>
-          <h2 className="text-xl md:text-2xl font-medium">Task Details</h2>
+          <div>
+            <h2 className="text-xl md:text-2xl font-medium">Task Details</h2>
+            {task.projectId && typeof task.projectId === "object" && (
+              <p className="text-sm text-gray-500 mt-0.5">
+                {task.projectId.name || "Project"}
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-semibold">{task.title}</h1>
-                {task.projectId && typeof task.projectId === "object" && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    Project: {task.projectId.name || "N/A"}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <h1 className="text-2xl font-semibold text-gray-900 leading-tight">
+                {task.title}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <span
                   className={`text-sm font-medium px-3 py-1 rounded-full ${getStatusTagColor(task.status)}`}
                 >
@@ -397,115 +357,118 @@ const TaskDetails = () => {
                 <span
                   className={`text-sm font-medium px-3 py-1 rounded-full ${getPriorityColor(task.priority)}`}
                 >
-                  {task.priority} Priority
+                  {task.priority}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="p-6">
-            {task.description && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </h3>
-                <p className="text-gray-600 whitespace-pre-wrap">
-                  {task.description}
-                </p>
+          <div className="p-6 space-y-6">
+            {isViewOnlyTask && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                View-only access: Super Admins and Admins cannot update task status or
+                checklist items.
               </div>
             )}
 
-            {totalTodos > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-700">
-                    Progress
-                  </h3>
-                  <span className="text-sm font-medium text-primary">
-                    {progress}%
-                  </span>
-                </div>
-                <ProjectProgressBar progress={progress} />
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <InfoBox
-                label="Due Date"
-                value={
-                  <div className="flex items-center gap-2">
-                    <span>{formatDate(task.dueDate)}</span>
-                    {isOverdue() && (
-                      <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                        Overdue
-                      </span>
-                    )}
-                  </div>
-                }
-              />
-
-              <InfoBox label="Created" value={formatDate(task.createdAt)} />
-
-              <div>
-                <label className="text-xs font-medium text-slate-500">
-                  Assigned Users
-                </label>
-                <div className="mt-1">
-                  <AvatarGroup
-                    avatars={
-                      task.assignedTo?.map((u) => u.profileImageUrl) || []
-                    }
-                    names={task.assignedTo?.map((u) => u.name) || []}
-                    maxVisible={5}
-                  />
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  {task.assignedTo?.map((u) => u.name).join(", ") || "N/A"}
-                </p>
-              </div>
-
-              <InfoBox label="Status" value={task.status} />
-              <InfoBox
-                label="Tester"
-                value={
-                  task.tester && typeof task.tester === "object"
-                    ? task.tester.name
-                    : "Unassigned"
-                }
-              />
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
+              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+                {task.description?.trim() || "No description provided."}
+              </p>
             </div>
 
-            {task.todoChecklist && task.todoChecklist.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-700">
-                    Todo Checklist ({completedTodos}/{totalTodos})
-                  </h3>
-                  {isUpdatingTodo && (
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                      <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
-                      Saving...
+            {totalTodos > 0 && (
+              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Checklist progress
+                    </p>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      {completedTodos} of {totalTodos} items completed
+                    </p>
+                  </div>
+                  <span className="text-2xl font-semibold text-gray-900">{progress}%</span>
+                </div>
+                <ProjectProgressBar progress={progress} showLabel={false} />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <DetailTile icon={LuCalendar} label="Due date">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{formatDate(task.dueDate)}</span>
+                  {isOverdue() && (
+                    <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                      Overdue
                     </span>
                   )}
                 </div>
-                <div className="bg-gray-50 rounded-lg divide-y">
-                  {task.todoChecklist.map((item, index) => (
+              </DetailTile>
+
+              <DetailTile icon={LuClock} label="Created">
+                {formatDate(task.createdAt)}
+              </DetailTile>
+
+              <DetailTile icon={LuUsers} label="Assigned to">
+                <div className="space-y-2">
+                  {task.assignedTo?.length > 0 ? (
+                    <AvatarGroup
+                      users={task.assignedTo}
+                      maxVisible={5}
+                      showTooltip
+                    />
+                  ) : null}
+                  <p className="text-sm font-normal text-gray-600">{assignedNames}</p>
+                </div>
+              </DetailTile>
+
+              <DetailTile icon={LuCircleCheck} label="Tester">
+                {testerName}
+              </DetailTile>
+            </div>
+
+            {activeChecklist.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <LuClipboardList className="text-gray-500" />
+                    <h3 className="text-sm font-medium text-gray-800">
+                      Todo checklist
+                    </h3>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {completedTodos}/{totalTodos}
+                    </span>
+                  </div>
+                  {hasChecklistChanges && (
+                    <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                      Unsaved changes
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50/40 p-3">
+                  {activeChecklist.map((item, index) => (
                     <TodoCheckList
                       key={`${item.text}-${index}`}
                       text={item.text}
                       isChecked={item.completed}
-                      onChange={() => updateTodoChecklist(index)}
-                      disabled={isUpdatingTodo || task.status === "Completed"}
-                      loading={updatingTodoIndex === index}
+                      onChange={() => toggleDraftChecklistItem(index)}
+                      disabled={!canUpdateTodo || isSavingChecklist}
                     />
                   ))}
                 </div>
+                {canUpdateTodo && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Check items off, then click Update Status to save.
+                  </p>
+                )}
               </div>
             )}
 
             {task.attachments && task.attachments.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
                   Attachments ({task.attachments.length})
                 </h3>
                 <div className="space-y-2">
@@ -522,9 +485,9 @@ const TaskDetails = () => {
             )}
 
             {task.reviewHistory && task.reviewHistory.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  Testing Notes
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Testing notes
                 </h3>
                 <div className="space-y-2">
                   {task.reviewHistory.map((review, index) => (
@@ -558,7 +521,7 @@ const TaskDetails = () => {
             )}
 
             {canReview && (
-              <div className="mb-6 rounded-lg border border-violet-100 bg-violet-50/40 p-4">
+              <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4">
                 <h3 className="text-sm font-medium text-gray-800 mb-3">
                   Tester Review
                 </h3>
@@ -592,132 +555,44 @@ const TaskDetails = () => {
               </div>
             )}
 
-            {canUpdateStatus && !showStatusEditor && (
-              <div className="flex justify-end pt-4 border-t">
+            {canUpdateTodo && totalTodos > 0 && (
+              <div className="flex justify-end pt-4 border-t border-gray-100">
                 <button
-                  onClick={openStatusEditor}
-                  className="btn-primary flex items-center gap-2"
+                  type="button"
+                  onClick={handleSaveChecklist}
+                  disabled={!hasChecklistChanges || isSavingChecklist}
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <LuPencil />
-                  Update Status
+                  {isSavingChecklist ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <LuSave />
+                      Update Status
+                    </>
+                  )}
                 </button>
               </div>
             )}
 
-            {canUpdateStatus && showStatusEditor && (
-              <form
-                onSubmit={handleStatusSubmit}
-                className="mt-6 rounded-lg border border-gray-100 bg-gray-50/60 p-4"
-              >
-                <h3 className="text-sm font-medium text-gray-800 mb-4">
-                  Update Status
-                </h3>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Select New Status
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {STATUS_OPTIONS.map((option) => {
-                      const Icon = option.icon;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => setSelectedStatus(option.value)}
-                          className={`p-4 rounded-lg border-2 transition-all ${
-                            selectedStatus === option.value
-                              ? "border-primary bg-primary/5"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                          disabled={option.value === task.status}
-                        >
-                          <div
-                            className={`w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center ${option.color}`}
-                          >
-                            <Icon />
-                          </div>
-                          <p className="text-sm font-medium">{option.label}</p>
-                          {option.value === task.status && (
-                            <p className="text-xs text-gray-400 mt-1">Current</p>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {selectedStatus === "In Progress" && (
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Progress ({statusProgress}%)
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={statusProgress}
-                      onChange={(e) => setStatusProgress(parseInt(e.target.value, 10))}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>0%</span>
-                      <span>50%</span>
-                      <span>100%</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Add Comment (Optional)
-                  </label>
-                  <textarea
-                    value={statusComment}
-                    onChange={(e) => setStatusComment(e.target.value)}
-                    rows="3"
-                    className="input w-full bg-white"
-                    placeholder="Add any notes about this status update..."
-                    disabled={statusUpdating}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={closeStatusEditor}
-                    className="btn-outline"
-                    disabled={statusUpdating}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={statusUpdating || selectedStatus === task.status}
-                    className="btn-primary flex items-center gap-2"
-                  >
-                    {statusUpdating ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <LuSave />
-                        Save Status
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {task.status === "Completed" && (
-              <div className="flex items-center justify-end gap-2 text-green-600 pt-4 border-t">
-                <LuCircleCheck />
-                <span className="text-sm font-medium">Task Completed</span>
+            {showCompletedBanner && (
+              <div className="flex items-center justify-center gap-2 text-green-700 py-3 px-4 rounded-xl bg-green-50 border border-green-100">
+                <LuCircleCheck className="text-lg" />
+                <span className="text-sm font-medium">Task completed</span>
               </div>
             )}
+
+            {canUpdateTodo &&
+              task.status === "Completed" &&
+              hasChecklistChanges &&
+              completedTodos < totalTodos && (
+                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
+                  Uncheck items and click Update Status to reopen this task.
+                </p>
+              )}
           </div>
         </div>
       </div>

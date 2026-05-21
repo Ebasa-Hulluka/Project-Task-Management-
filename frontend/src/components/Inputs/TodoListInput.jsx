@@ -7,6 +7,8 @@ const TodoListInput = ({
   todoList = [],
   onChange,
   readOnly = false,
+  /** When false, items cannot be marked complete (team members do that on the task page). */
+  allowToggleComplete = true,
   maxItems = 20,
 }) => {
   const [option, setOption] = useState("");
@@ -43,6 +45,8 @@ const TodoListInput = ({
 
   // Function to toggle item completion
   const handleToggleComplete = (index) => {
+    if (!allowToggleComplete) return;
+
     const updatedArr = [...todoList];
     updatedArr[index] = {
       ...updatedArr[index],
@@ -50,6 +54,8 @@ const TodoListInput = ({
     };
     onChange(updatedArr);
   };
+
+  const canToggle = allowToggleComplete && !readOnly;
 
   // Handle key press
   const handleKeyPress = (e) => {
@@ -78,23 +84,34 @@ const TodoListInput = ({
                 className="flex items-center justify-between bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors group"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {/* Checkbox */}
-                  <button
-                    type="button"
-                    onClick={() => !readOnly && handleToggleComplete(index)}
-                    className={`shrink-0 transition-colors ${
-                      readOnly
-                        ? "cursor-default"
-                        : "cursor-pointer hover:text-primary"
-                    }`}
-                    disabled={readOnly}
-                  >
-                    {item.completed ? (
-                      <LuCircleCheck className="text-primary text-lg" />
-                    ) : (
-                      <LuCircle className="text-gray-400 hover:text-primary text-lg" />
-                    )}
-                  </button>
+                  {canToggle ? (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleComplete(index)}
+                      className="shrink-0 cursor-pointer transition-colors hover:text-primary"
+                    >
+                      {item.completed ? (
+                        <LuCircleCheck className="text-primary text-lg" />
+                      ) : (
+                        <LuCircle className="text-gray-400 hover:text-primary text-lg" />
+                      )}
+                    </button>
+                  ) : (
+                    <span
+                      className="shrink-0 cursor-default"
+                      title={
+                        item.completed
+                          ? "Completed by team member"
+                          : "Only team members can mark items complete"
+                      }
+                    >
+                      {item.completed ? (
+                        <LuCircleCheck className="text-green-600 text-lg" />
+                      ) : (
+                        <LuCircle className="text-gray-300 text-lg" />
+                      )}
+                    </span>
+                  )}
 
                   {/* Item Text */}
                   <span
@@ -152,7 +169,11 @@ const TodoListInput = ({
 
           {/* Helper Text */}
           <div className="flex items-center justify-between text-xs">
-            <p className="text-gray-400">Press Enter to quickly add</p>
+            <p className="text-gray-400">
+              {!allowToggleComplete
+                ? "Team members mark items complete when working on the task"
+                : "Press Enter to quickly add"}
+            </p>
             <p className="text-gray-400">
               {todoList.length}/{maxItems} tasks
             </p>

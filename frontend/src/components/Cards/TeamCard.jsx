@@ -17,6 +17,7 @@ const TeamCard = ({
   onEdit,
   onDelete,
   showActions = false,
+  viewOnly = false,
 }) => {
   const [showMembersModal, setShowMembersModal] = useState(false);
 
@@ -66,8 +67,11 @@ const TeamCard = ({
   return (
     <>
       <div
-        className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer"
-        onClick={handleClick}
+        className={`bg-white rounded-xl p-5 shadow-sm border border-gray-100 transition-all ${
+          viewOnly ? "" : "hover:shadow-md cursor-pointer"
+        }`}
+        onClick={viewOnly ? undefined : handleClick}
+        role={viewOnly ? undefined : "button"}
       >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -128,18 +132,54 @@ const TeamCard = ({
         </div>
       </div>
 
-      {/* Team Members Preview */}
+      {/* Team Members */}
       {members.length > 0 && (
         <div
-          className="pt-3 border-t border-gray-100 cursor-pointer"
-          onClick={handleOpenMembers}
+          className={`pt-3 border-t border-gray-100 ${viewOnly ? "" : "cursor-pointer"}`}
+          onClick={viewOnly ? undefined : handleOpenMembers}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500">Team Members</span>
-            <span className="text-xs text-primary">View list</span>
+            <span className="text-xs font-medium text-gray-600">Team members</span>
+            {!viewOnly && <span className="text-xs text-primary">View list</span>}
           </div>
-          <AvatarGroup users={members} maxVisible={5} size="sm" />
+          {viewOnly ? (
+            <ul className="space-y-2 mt-2">
+              {members.map((member) => {
+                const memberId = String(member?._id || member || "");
+                const isLead = Boolean(leadId && memberId === leadId);
+                return (
+                  <li
+                    key={memberId}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {member?.name || "Unknown"}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {member?.email || ""}
+                      </p>
+                    </div>
+                    {isLead && (
+                      <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
+                        <LuCrown className="text-xs" />
+                        Lead
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <AvatarGroup users={members} maxVisible={5} size="sm" />
+          )}
         </div>
+      )}
+
+      {viewOnly && members.length === 0 && (
+        <p className="text-xs text-gray-400 pt-3 border-t border-gray-100 mt-3">
+          No members in this team yet.
+        </p>
       )}
 
       {/* Action Buttons */}

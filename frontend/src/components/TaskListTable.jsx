@@ -213,12 +213,17 @@ const TaskListTable = ({
                   </span>
                 </td>
 
-                <td className="px-4 py-3">
-                  <AvatarGroup
-                    users={task.assignedTo || []}
-                    maxVisible={3}
-                    size="sm"
-                  />
+                <td className="px-4 py-3 overflow-visible">
+                  {task.assignedTo?.length > 0 ? (
+                    <AvatarGroup
+                      users={task.assignedTo}
+                      maxVisible={3}
+                      size="sm"
+                      showTooltip
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-400">Unassigned</span>
+                  )}
                 </td>
 
                 <td className="px-4 py-3 text-sm text-gray-600">
@@ -290,7 +295,12 @@ const TaskListTable = ({
               </div>
 
               {task.assignedTo?.length > 0 && (
-                <AvatarGroup users={task.assignedTo} maxVisible={2} size="sm" />
+                <AvatarGroup
+                  users={task.assignedTo}
+                  maxVisible={2}
+                  size="sm"
+                  showTooltip
+                />
               )}
             </div>
 

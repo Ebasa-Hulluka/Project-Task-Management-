@@ -38,6 +38,8 @@ import ManagerProjectDetails from "./pages/ProjectManager/ProjectDetails";
 import ManagerTaskManagement from "./pages/ProjectManager/TaskManagement";
 import ManagerCreateTask from "./pages/ProjectManager/CreateTask";
 import ManagerEditTask from "./pages/ProjectManager/EditTask";
+import ManagerViewTeams from "./pages/ProjectManager/ViewTeams";
+import ManagerViewTesters from "./pages/ProjectManager/ViewTesters";
 
 // Team Member Pages
 import MemberDashboard from "./pages/TeamMember/MemberDashboard";
@@ -257,6 +259,8 @@ const App = () => {
               element={<ManagerProjectDetails />}
             />
             <Route path="/manager/tasks" element={<ManagerTaskManagement />} />
+            <Route path="/manager/teams" element={<ManagerViewTeams />} />
+            <Route path="/manager/testers" element={<ManagerViewTesters />} />
             <Route
               path="/manager/tasks/create"
               element={<ManagerCreateTask />}

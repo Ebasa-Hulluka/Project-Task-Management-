@@ -16,6 +16,10 @@ import IncrementalListControls from "../../components/IncrementalListControls";
 import useIncrementalList from "../../hooks/useIncrementalList";
 import { PROJECT_STATUS_DATA } from "../../utils/data";
 import { getErrorMessage } from "../../utils/helper";
+import {
+  getProjectDisplayName,
+  sortProjectsByDisplayName,
+} from "../../utils/projectDisplay";
 
 const ProjectList = () => {
   const [projects, setProjects] = useState([]);
@@ -45,8 +49,9 @@ const ProjectList = () => {
       );
 
       if (response.data) {
-        setProjects(response.data);
-        setFilteredProjects(response.data);
+        const sorted = sortProjectsByDisplayName(response.data);
+        setProjects(sorted);
+        setFilteredProjects(sorted);
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -103,14 +108,16 @@ const ProjectList = () => {
 
     // Apply search
     if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (project) =>
-          project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          project.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+          getProjectDisplayName(project.name).toLowerCase().includes(query) ||
+          project.name.toLowerCase().includes(query) ||
+          project.description?.toLowerCase().includes(query),
       );
     }
 
-    setFilteredProjects(filtered);
+    setFilteredProjects(sortProjectsByDisplayName(filtered));
   }, [searchTerm, statusFilter, projects]);
 
   useEffect(() => {

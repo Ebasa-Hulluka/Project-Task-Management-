@@ -9,9 +9,12 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { PROJECT_STATUS_DATA } from "../../utils/data";
 import { getErrorMessage } from "../../utils/helper";
+import { getProjectPaths, isTaskViewOnlyRole } from "../../utils/rolePaths";
+import { useUser } from "../../context/userContext";
 
 const CreateProject = () => {
   const navigate = useNavigate();
+  const { user } = useUser();
 
   const [loading, setLoading] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -24,6 +27,15 @@ const CreateProject = () => {
     team: [],
   });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (isTaskViewOnlyRole(user?.role)) {
+      toast.error(
+        "Super Admins and Admins can only view projects. Creating projects is not allowed.",
+      );
+      navigate(getProjectPaths(user?.role).list, { replace: true });
+    }
+  }, [user?.role, navigate]);
 
   // Fetch teams for project assignment
   const fetchTeams = async () => {

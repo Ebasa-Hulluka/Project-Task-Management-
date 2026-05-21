@@ -363,6 +363,7 @@ const EditTask = () => {
                 onChange={(todoChecklist) =>
                   setFormData((prev) => ({ ...prev, todoChecklist }))
                 }
+                allowToggleComplete={false}
               />
             </div>
 

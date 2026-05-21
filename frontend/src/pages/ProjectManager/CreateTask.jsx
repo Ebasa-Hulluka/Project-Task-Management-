@@ -12,10 +12,13 @@ import { API_PATHS } from "../../utils/apiPaths";
 import { PRIORITY_DATA } from "../../utils/data";
 import { getErrorMessage } from "../../utils/helper";
 import { getProjectTeamDisplay } from "../../utils/projectTeam";
+import { getProjectPaths, isTaskViewOnlyRole } from "../../utils/rolePaths";
+import { useUser } from "../../context/userContext";
 
 const CreateTask = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
   const { projectId: initialProjectId, projectName: initialProjectName } =
     location.state || {};
 
@@ -36,6 +39,19 @@ const CreateTask = () => {
     todoChecklist: [],
   });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (isTaskViewOnlyRole(user?.role)) {
+      toast.error(
+        "Super Admins and Admins can only view tasks. Creating tasks is not allowed.",
+      );
+      const paths = getProjectPaths(user?.role);
+      navigate(
+        initialProjectId ? paths.detail(initialProjectId) : paths.list,
+        { replace: true },
+      );
+    }
+  }, [user?.role, navigate, initialProjectId]);
 
   // Fetch projects and users
   const fetchData = async () => {
@@ -387,6 +403,7 @@ const CreateTask = () => {
               <TodoListInput
                 todoList={formData.todoChecklist}
                 onChange={handleTodoListChange}
+                allowToggleComplete={false}
               />
             </div>
 

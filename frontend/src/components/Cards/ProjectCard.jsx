@@ -16,6 +16,7 @@ import AvatarGroup from "../AvatarGroup";
 import ProjectProgressBar from "../ProjectProgressBar";
 import { getStatusColor } from "../../utils/helper";
 import { getProjectTeamDisplay } from "../../utils/projectTeam";
+import { getProjectDisplayName } from "../../utils/projectDisplay";
 
 const ProjectCard = ({
   project,
@@ -56,9 +57,14 @@ const ProjectCard = ({
         completed: safeTasks.filter((t) => t.status === "Completed").length,
       };
 
-  const isActive = status === "Active";
-  const isCompleted = status === "Completed";
-  const isOnHold = status === "On Hold";
+  const displayName = getProjectDisplayName(name);
+  const effectiveStatus =
+    taskSummary.total > 0 && taskSummary.completed === taskSummary.total
+      ? "Completed"
+      : status;
+  const isActive = effectiveStatus === "Active";
+  const isCompleted = effectiveStatus === "Completed";
+  const isOnHold = effectiveStatus === "On Hold";
 
   const getStatusIcon = () => {
     if (isCompleted) return <LuCircleCheck className="text-green-600" />;
@@ -111,7 +117,7 @@ const ProjectCard = ({
             {getStatusIcon()}
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800 line-clamp-1">{name}</h3>
+            <h3 className="font-semibold text-gray-800 line-clamp-1">{displayName}</h3>
             <p className="text-xs text-gray-400">
               Created {moment(createdAt).fromNow()}
             </p>
@@ -119,9 +125,9 @@ const ProjectCard = ({
         </div>
 
         <span
-          className={`text-xs px-2 py-1 rounded-full ${getStatusColor(status)}`}
+          className={`text-xs px-2 py-1 rounded-full ${getStatusColor(effectiveStatus)}`}
         >
-          {status}
+          {effectiveStatus}
         </span>
       </div>
 
@@ -136,7 +142,11 @@ const ProjectCard = ({
           <span className="text-gray-500">Progress</span>
           <span className="font-medium text-gray-700">{progress}%</span>
         </div>
-        <ProjectProgressBar progress={progress} />
+        <ProjectProgressBar
+          progress={progress}
+          status={effectiveStatus}
+          showLabel={false}
+        />
       </div>
 
       {/* Details Grid */}

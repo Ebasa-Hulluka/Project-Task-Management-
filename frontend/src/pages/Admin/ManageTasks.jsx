@@ -207,7 +207,12 @@ const ManageTasks = () => {
                 Assigned Members ({selectedTask?.assignedTo?.length || 0})
               </p>
               {selectedTask?.assignedTo?.length > 0 ? (
-                <AvatarGroup users={selectedTask.assignedTo} maxVisible={8} size="md" />
+                <AvatarGroup
+                  users={selectedTask.assignedTo}
+                  maxVisible={8}
+                  size="md"
+                  showTooltip
+                />
               ) : (
                 <p className="text-sm text-gray-500">No assignees</p>
               )}

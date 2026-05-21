@@ -1,7 +1,16 @@
 const Task = require("../models/Task");
 const Project = require("../models/Project");
+const { isAdminRole, isTaskViewOnlyRole } = require("../utils/roles");
 const mongoose = require("mongoose");
 const { logActivity } = require("../utils/activityLogger");
+const { syncProjectFromTasks } = require("../utils/projectStatus");
+
+const syncProjectForTask = async (task) => {
+  const projectId = task?.projectId?._id || task?.projectId;
+  if (projectId) {
+    await syncProjectFromTasks(projectId);
+  }
+};
 
 const populateTask = (query) =>
   query
@@ -154,6 +163,13 @@ const getTaskById = async (req, res) => {
 // @access  Private (Admin, Project Manager)
 const createTask = async (req, res) => {
   try {
+    if (isTaskViewOnlyRole(req.user.role)) {
+      return res.status(403).json({
+        message:
+          "Super Admins and Admins can only view tasks. Creating tasks is not allowed for your role.",
+      });
+    }
+
     const {
       title,
       description,
@@ -199,6 +215,7 @@ const createTask = async (req, res) => {
     });
 
     const populatedTask = await populateTask(Task.findById(task._id));
+    await syncProjectForTask(task);
 
     res
       .status(201)
@@ -220,12 +237,17 @@ const updateTask = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    // Check authorization
+    if (isTaskViewOnlyRole(req.user.role)) {
+      return res.status(403).json({
+        message:
+          "Super Admins and Admins can only view tasks. Editing tasks is not allowed for your role.",
+      });
+    }
+
     const isCreator = task.createdBy.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === "admin" || req.user.role === "superAdmin";
     const isManager = req.user.role === "projectManager";
 
-    if (!isAdmin && !isCreator && !isManager) {
+    if (!isCreator && !isManager) {
       return res
         .status(403)
         .json({ message: "Not authorized to update this task" });
@@ -252,6 +274,7 @@ const updateTask = async (req, res) => {
     }
 
     const updatedTask = await task.save();
+    await syncProjectForTask(updatedTask);
     const populatedTask = await populateTask(Task.findById(updatedTask._id));
 
     res.json({ message: "Task updated successfully", task: populatedTask });
@@ -272,18 +295,27 @@ const deleteTask = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    // Check authorization
+    if (isTaskViewOnlyRole(req.user.role)) {
+      return res.status(403).json({
+        message:
+          "Super Admins and Admins can only view tasks. Deleting tasks is not allowed for your role.",
+      });
+    }
+
     const isCreator = task.createdBy.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === "admin" || req.user.role === "superAdmin";
     const isManager = req.user.role === "projectManager";
 
-    if (!isAdmin && !isCreator && !isManager) {
+    if (!isCreator && !isManager) {
       return res
         .status(403)
         .json({ message: "Not authorized to delete this task" });
     }
 
+    const projectId = task.projectId;
     await task.deleteOne();
+    if (projectId) {
+      await syncProjectFromTasks(projectId);
+    }
     res.json({ message: "Task deleted successfully" });
   } catch (error) {
     res.status(500).json({
@@ -310,18 +342,21 @@ const updateTaskStatus = async (req, res) => {
       (userId) => userId.toString() === req.user._id.toString(),
     );
 
-    const isAdmin =
-      req.user.role === "admin" || req.user.role === "superAdmin";
-
     if (req.user.role === "teamMember") {
       if (!isAssigned) {
         return res
           .status(403)
           .json({ message: "Only assigned team members can update task status" });
       }
-    } else if (!isAdmin) {
+    } else if (isTaskViewOnlyRole(req.user.role)) {
       return res.status(403).json({
-        message: "Only team members can update task status",
+        message:
+          "Super Admins and Admins can only view tasks. Status updates are not allowed for your role.",
+      });
+    } else {
+      return res.status(403).json({
+        message:
+          "Task status is updated automatically when team members complete checklist items",
       });
     }
 
@@ -341,6 +376,7 @@ const updateTaskStatus = async (req, res) => {
       );
     }
     const updatedTask = await populateTask(Task.findById(task._id));
+    await syncProjectForTask(task);
     res.json({ message: "Task status updated", task: updatedTask });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -365,18 +401,20 @@ const updateTaskChecklist = async (req, res) => {
       (userId) => userId.toString() === req.user._id.toString(),
     );
 
-    const isAdmin =
-      req.user.role === "admin" || req.user.role === "superAdmin";
-
     if (req.user.role === "teamMember") {
       if (!isAssigned) {
         return res.status(403).json({
           message: "Only assigned team members can update the checklist",
         });
       }
-    } else if (!isAdmin) {
+    } else if (isTaskViewOnlyRole(req.user.role)) {
       return res.status(403).json({
-        message: "Only team members can update the checklist",
+        message:
+          "Super Admins and Admins can only view tasks. Checklist updates are not allowed for your role.",
+      });
+    } else {
+      return res.status(403).json({
+        message: "Only assigned team members can update the checklist",
       });
     }
 
@@ -408,6 +446,7 @@ const updateTaskChecklist = async (req, res) => {
       );
     }
     const updatedTask = await populateTask(Task.findById(req.params.id));
+    await syncProjectForTask(task);
 
     res.json({ message: "Task checklist updated", task: updatedTask });
   } catch (error) {
@@ -438,11 +477,7 @@ const reviewTask = async (req, res) => {
 
     const isAssignedTester =
       task.tester && task.tester.toString() === req.user._id.toString();
-    const canReview =
-      isAssignedTester ||
-      req.user.role === "admin" ||
-      req.user.role === "superAdmin" ||
-      req.user.role === "projectManager";
+    const canReview = isAssignedTester || req.user.role === "projectManager";
 
     if (!canReview) {
       return res.status(403).json({ message: "Only the assigned tester can review this task" });
@@ -482,6 +517,8 @@ const reviewTask = async (req, res) => {
       .populate("tester", "name email profileImageUrl")
       .populate("projectId", "name")
       .populate("reviewHistory.tester", "name email profileImageUrl");
+
+    await syncProjectForTask(task);
 
     res.json({
       message:
@@ -584,11 +621,9 @@ const getDashboardData = async (req, res) => {
       },
     ]);
 
-    const recentTasks = await Task.find()
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate("projectId", "name")
-      .select("title status priority dueDate createdAt projectId");
+    const recentTasks = await populateTask(
+      Task.find().sort({ createdAt: -1 }).limit(10),
+    );
 
     res.status(200).json({
       statistics: {
@@ -678,11 +713,9 @@ const getUserDashboardData = async (req, res) => {
       return acc;
     }, {});
 
-    const recentTasks = await Task.find(userTaskFilter)
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate("projectId", "name")
-      .select("title status priority dueDate createdAt projectId");
+    const recentTasks = await populateTask(
+      Task.find(userTaskFilter).sort({ createdAt: -1 }).limit(10),
+    );
 
     res.status(200).json({
       statistics: {
