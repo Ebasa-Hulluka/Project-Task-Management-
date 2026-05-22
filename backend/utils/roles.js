@@ -5,7 +5,7 @@ const isSuperAdminRole = (role) => role === "superAdmin";
 const canManageProjects = (role) =>
   isAdminRole(role) || role === "projectManager";
 
-/** Super Admin & Admin are view-onon tasks; only PM edits task status/checklists. */
+/** Super Admin & Admin are view-only on tasks; only PM edits task status/checklists. */
 const canManageTasks = (role) => role === "projectManager";
 
 const isTaskViewOnlyRole = (role) => isAdminRole(role);
