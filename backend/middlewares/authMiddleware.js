@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { getUserRoles } = require("../utils/userRoles");
 
 // Middleware to protect routes
 const protect = async (req, res, next) => {
@@ -13,6 +14,15 @@ const protect = async (req, res, next) => {
       if (!req.user || !req.user.isActive || req.user.status === "deactivated") {
         return res.status(401).json({ message: "Not authorized" });
       }
+
+      const roles = getUserRoles(req.user);
+      if (decoded.activeRole && roles.includes(decoded.activeRole)) {
+        req.user.role = decoded.activeRole;
+      } else if (!roles.includes(req.user.role)) {
+        req.user.role = roles[0];
+      }
+      req.user.roles = roles;
+
       next();
     } else {
       res.status(401).json({ message: "Not authorized, no token" });

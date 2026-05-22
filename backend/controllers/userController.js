@@ -13,11 +13,18 @@ const {
   sendPasswordResetCompletedEmail,
 } = require("../services/emailService");
 
-const VALID_USER_ROLES = ["superAdmin", "admin", "projectManager", "teamMember", "tester"];
+const {
+  VALID_USER_ROLES,
+  getUserRoles,
+  pickPrimaryRole,
+  normalizeRolesInput,
+  validateAssignableRoles,
+  userHasRole,
+} = require("../utils/userRoles");
 const VALID_USER_STATUSES = ["active", "deactivated"];
 const DUPLICATE_EMAIL_MESSAGE = "There is already an account by this email.";
 
-const isSuperAdminUser = (user) => user?.role === "superAdmin";
+const isSuperAdminUser = (user) => userHasRole(user, "superAdmin");
 
 const canManageAdminAccounts = (actor) => isSuperAdminUser(actor);
 
@@ -46,7 +53,11 @@ const getUsers = async (req, res) => {
       if (!VALID_USER_ROLES.includes(role)) {
         return res.status(400).json({ message: "Invalid role filter" });
       }
-      query.role = role;
+      query.$or = [
+        { roles: role },
+        { role, roles: { $exists: false } },
+        { role, roles: { $size: 0 } },
+      ];
     }
 
     if (status && status !== "all") {
@@ -66,8 +77,20 @@ const getUsers = async (req, res) => {
 
     const usersWithTaskCounts = await Promise.all(
       users.map(async (user) => {
+        const roles = getUserRoles(user);
+        const taskOwnerClauses = [];
+        if (roles.includes("tester")) {
+          taskOwnerClauses.push({ tester: user._id });
+        }
+        if (roles.includes("teamMember")) {
+          taskOwnerClauses.push({ assignedTo: user._id });
+        }
         const taskOwnerFilter =
-          user.role === "tester" ? { tester: user._id } : { assignedTo: user._id };
+          taskOwnerClauses.length === 0
+            ? { assignedTo: user._id }
+            : taskOwnerClauses.length === 1
+              ? taskOwnerClauses[0]
+              : { $or: taskOwnerClauses };
         const [pendingTasks, inProgressTasks, completedTasks, totalTasks] =
           await Promise.all([
             Task.countDocuments({ ...taskOwnerFilter, status: "Pending" }),
@@ -78,6 +101,7 @@ const getUsers = async (req, res) => {
 
         return {
           ...user._doc,
+          roles: getUserRoles(user),
           pendingTasks,
           inProgressTasks,
           completedTasks,
@@ -90,8 +114,20 @@ const getUsers = async (req, res) => {
       User.countDocuments(),
       User.aggregate([
         {
+          $project: {
+            roleList: {
+              $cond: [
+                { $gt: [{ $size: { $ifNull: ["$roles", []] } }, 0] },
+                "$roles",
+                ["$role"],
+              ],
+            },
+          },
+        },
+        { $unwind: "$roleList" },
+        {
           $group: {
-            _id: "$role",
+            _id: "$roleList",
             count: { $sum: 1 },
           },
         },
@@ -147,12 +183,20 @@ const getUsers = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, role = "teamMember", profileImageUrl = null } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      roles: rolesBody,
+      profileImageUrl = null,
+    } = req.body;
 
     const normalizedName = String(name || "").trim();
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const normalizedPassword = String(password || "");
-    const normalizedRole = String(role || "").trim();
+    const normalizedRoles = normalizeRolesInput({ role, roles: rolesBody });
+    const roleValidation = validateAssignableRoles(normalizedRoles, req.user);
 
     if (!normalizedName) {
       return res.status(400).json({ message: "Name is required" });
@@ -173,13 +217,12 @@ const createUser = async (req, res) => {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    if (!VALID_USER_ROLES.includes(normalizedRole) || normalizedRole === "superAdmin") {
-      return res.status(400).json({ message: "Invalid role for account creation" });
+    if (!roleValidation.ok) {
+      return res.status(400).json({ message: roleValidation.message });
     }
 
-    if (normalizedRole === "admin" && !canManageAdminAccounts(req.user)) {
-      return res.status(403).json({ message: "Only the super admin can create admin accounts" });
-    }
+    const assignedRoles = roleValidation.roles;
+    const primaryRole = pickPrimaryRole(assignedRoles);
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(normalizedPassword, salt);
@@ -188,7 +231,8 @@ const createUser = async (req, res) => {
       name: normalizedName,
       email: normalizedEmail,
       password: hashedPassword,
-      role: normalizedRole,
+      roles: assignedRoles,
+      role: primaryRole,
       profileImageUrl,
       status: "active",
       isActive: true,
@@ -197,7 +241,7 @@ const createUser = async (req, res) => {
     await logActivity(
       req.user._id,
       "Created user account",
-      `Created ${normalizedRole} account for ${createdUser.email}`,
+      `Created account (${assignedRoles.join(", ")}) for ${createdUser.email}`,
     );
 
     let emailSent = true;
@@ -223,6 +267,7 @@ const createUser = async (req, res) => {
         name: createdUser.name,
         email: createdUser.email,
         role: createdUser.role,
+        roles: getUserRoles(createdUser),
         status: createdUser.status,
         isActive: createdUser.isActive,
         profileImageUrl: createdUser.profileImageUrl,
@@ -287,11 +332,11 @@ const deleteUser = async (req, res) => {
       return res.status(403).json({ message: "You cannot delete your own account" });
     }
 
-    if (user.role === "superAdmin") {
+    if (userHasRole(user, "superAdmin")) {
       return res.status(403).json({ message: "Super admin account cannot be deleted" });
     }
 
-    if (user.role === "admin" && !canManageAdminAccounts(req.user)) {
+    if (userHasRole(user, "admin") && !canManageAdminAccounts(req.user)) {
       return res.status(403).json({ message: "Only the super admin can delete admin accounts" });
     }
 
@@ -336,11 +381,11 @@ const deactivateUserAccount = async (req, res) => {
       return res.status(403).json({ message: "You cannot deactivate your own account" });
     }
 
-    if (user.role === "superAdmin") {
+    if (userHasRole(user, "superAdmin")) {
       return res.status(403).json({ message: "Super admin account cannot be deactivated" });
     }
 
-    if (user.role === "admin" && !canManageAdminAccounts(req.user)) {
+    if (userHasRole(user, "admin") && !canManageAdminAccounts(req.user)) {
       return res.status(403).json({ message: "Only the super admin can deactivate admin accounts" });
     }
 
@@ -389,15 +434,17 @@ const deactivateUserAccount = async (req, res) => {
 
 const updateUserRole = async (req, res) => {
   try {
-    const { role } = req.body;
+    const { role, roles: rolesBody } = req.body;
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid user ID format" });
     }
 
-    if (!VALID_USER_ROLES.includes(role)) {
-      return res.status(400).json({ message: "Invalid role" });
+    const normalizedRoles = normalizeRolesInput({ role, roles: rolesBody });
+    const roleValidation = validateAssignableRoles(normalizedRoles, req.user);
+    if (!roleValidation.ok) {
+      return res.status(400).json({ message: roleValidation.message });
     }
 
     const user = await User.findById(id);
@@ -409,26 +456,26 @@ const updateUserRole = async (req, res) => {
       return res.status(403).json({ message: "You cannot change your own role" });
     }
 
-    if (user.role === "superAdmin" || role === "superAdmin") {
+    const userRoles = getUserRoles(user);
+    if (userRoles.includes("superAdmin")) {
       return res.status(403).json({ message: "Super admin role cannot be modified here" });
     }
 
-    if (user.role === "admin" && !canManageAdminAccounts(req.user)) {
+    if (userRoles.includes("admin") && !canManageAdminAccounts(req.user)) {
       return res.status(403).json({ message: "Admins cannot modify other admin accounts" });
     }
 
-    if (role === "admin" && !canManageAdminAccounts(req.user)) {
-      return res.status(403).json({ message: "Only the super admin can assign the admin role" });
-    }
-
-    const previousRole = user.role;
-    user.role = role;
+    const previousRoles = userRoles.join(", ");
+    const assignedRoles = roleValidation.roles;
+    user.roles = assignedRoles;
+    user.role = pickPrimaryRole(assignedRoles);
     await user.save();
 
-    if (previousRole !== role) {
+    const nextRoles = assignedRoles.join(", ");
+    if (previousRoles !== nextRoles) {
       await notifyAdmins({
         type: "user_role_changed",
-        message: `Role updated for ${user.name}: ${previousRole} -> ${role}`,
+        message: `Roles updated for ${user.name}: ${previousRoles} -> ${nextRoles}`,
         link: "/admin/users",
       });
       await trySendAccountEmail(
@@ -436,20 +483,21 @@ const updateUserRole = async (req, res) => {
           sendRoleChangedEmail({
             to: user.email,
             name: user.name,
-            previousRole,
-            newRole: role,
+            previousRole: previousRoles,
+            newRole: nextRoles,
           }),
         "role changed email",
       );
     }
 
     res.json({
-      message: "User role updated successfully",
+      message: "User roles updated successfully",
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        roles: getUserRoles(user),
         status: user.status,
       },
     });
@@ -505,7 +553,15 @@ const getUsersByRole = async (req, res) => {
       return res.status(400).json({ message: "Invalid role" });
     }
 
-    const users = await User.find({ role }).select("-password").populate("team", "name");
+    const users = await User.find({
+      $or: [
+        { roles: role },
+        { role, roles: { $exists: false } },
+        { role, roles: { $size: 0 } },
+      ],
+    })
+      .select("-password")
+      .populate("team", "name");
 
     res.json(users);
   } catch (error) {
@@ -516,7 +572,11 @@ const getUsersByRole = async (req, res) => {
 const getTeamMembers = async (req, res) => {
   try {
     const users = await User.find({
-      role: "teamMember",
+      $or: [
+        { roles: "teamMember" },
+        { role: "teamMember", roles: { $exists: false } },
+        { role: "teamMember", roles: { $size: 0 } },
+      ],
       isActive: { $ne: false },
       status: "active",
     })
@@ -546,11 +606,11 @@ const reactivateUserAccount = async (req, res) => {
       return res.status(400).json({ message: "Account is already active" });
     }
 
-    if (user.role === "superAdmin") {
+    if (userHasRole(user, "superAdmin")) {
       return res.status(403).json({ message: "Super admin account cannot be reactivated here" });
     }
 
-    if (user.role === "admin" && !canManageAdminAccounts(req.user)) {
+    if (userHasRole(user, "admin") && !canManageAdminAccounts(req.user)) {
       return res.status(403).json({ message: "Admins cannot reactivate other admin accounts" });
     }
 

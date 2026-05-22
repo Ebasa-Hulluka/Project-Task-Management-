@@ -518,7 +518,7 @@ const uploadTaskAttachment = async (req, res) => {
 
 // @desc    Tester approves or rejects a task review
 // @route   PUT /api/tasks/:id/review
-// @access  Private (assigned tester, admin, project manager)
+// @access  Private (assigned tester only)
 const reviewTask = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -538,10 +538,11 @@ const reviewTask = async (req, res) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const isAssignedTester =
-      task.tester && task.tester.toString() === req.user._id.toString();
-    const canReview = isAssignedTester || req.user.role === "projectManager";
+      req.user.role === "tester" &&
+      task.tester &&
+      task.tester.toString() === req.user._id.toString();
 
-    if (!canReview) {
+    if (!isAssignedTester) {
       return res.status(403).json({ message: "Only the assigned tester can review this task" });
     }
 

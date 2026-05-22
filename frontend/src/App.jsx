@@ -19,6 +19,7 @@ import Landing from "./pages/Landing";
 
 // Auth Pages
 import Login from "./pages/Auth/Login";
+import SelectRole from "./pages/Auth/SelectRole";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 
 // Admin Pages
@@ -38,7 +39,7 @@ import ManagerProjectDetails from "./pages/ProjectManager/ProjectDetails";
 import ManagerTaskManagement from "./pages/ProjectManager/TaskManagement";
 import ManagerCreateTask from "./pages/ProjectManager/CreateTask";
 import ManagerEditTask from "./pages/ProjectManager/EditTask";
-import ManagerViewTeams from "./pages/ProjectManager/ViewTeams";
+import ManagerManageTeams from "./pages/Admin/ManageTeams";
 import ManagerViewTesters from "./pages/ProjectManager/ViewTesters";
 
 // Team Member Pages
@@ -222,6 +223,7 @@ const App = () => {
 
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/select-role" element={<SelectRole />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Admin Routes */}
@@ -259,7 +261,7 @@ const App = () => {
               element={<ManagerProjectDetails />}
             />
             <Route path="/manager/tasks" element={<ManagerTaskManagement />} />
-            <Route path="/manager/teams" element={<ManagerViewTeams />} />
+            <Route path="/manager/teams" element={<ManagerManageTeams />} />
             <Route path="/manager/testers" element={<ManagerViewTesters />} />
             <Route
               path="/manager/tasks/create"

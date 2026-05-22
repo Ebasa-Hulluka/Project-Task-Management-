@@ -10,6 +10,7 @@ import {
   setLocalStorage,
 } from "../../utils/helper";
 import { useUser } from "../../context/userContext";
+import { getDashboardPath } from "../../utils/userRoles";
 
 const SAVED_EMAILS_KEY = "login_saved_emails";
 const EMAIL_DATALIST_ID = "login-email-suggestions";
@@ -38,13 +39,6 @@ const Login = () => {
       setLocalStorage(SAVED_EMAILS_KEY, next);
       return next;
     });
-  };
-
-  const getDashboardPath = (role) => {
-    if (role === "superAdmin" || role === "admin") return "/admin/dashboard";
-    if (role === "projectManager") return "/manager/dashboard";
-    if (role === "tester") return "/tester/dashboard";
-    return "/member/dashboard";
   };
 
   // Handle Login Form Submit
@@ -80,9 +74,13 @@ const Login = () => {
 
       if (result.success) {
         updateSavedEmails(normalizedEmail);
-        toast.success("Login successful!");
 
-        // Redirect based on role
+        if (result.requiresRoleSelection) {
+          navigate("/select-role", { replace: true });
+          return;
+        }
+
+        toast.success("Login successful!");
         navigate(getDashboardPath(result.user.role), { replace: true });
       } else {
         const normalizedError = (result.error || "").toLowerCase();

@@ -5,10 +5,24 @@ const jwt = require("jsonwebtoken");
 const { logActivity } = require("../utils/activityLogger");
 const { createNotificationForUsers } = require("../utils/notificationService");
 const { sendPasswordResetRequestEmail } = require("../services/emailService");
-// Generate JWT Token
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const {
+  getUserRoles,
+  sortRolesForSelection,
+  serializeAuthUser,
+} = require("../utils/userRoles");
+
+const generateToken = (userId, activeRole) => {
+  const payload = { id: userId };
+  if (activeRole) payload.activeRole = activeRole;
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
+
+const generateRoleSelectionToken = (userId) =>
+  jwt.sign(
+    { id: userId, purpose: "role-selection" },
+    process.env.JWT_SECRET,
+    { expiresIn: "15m" },
+  );
 
 const isValidEmailFormat = (email = "") =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim().toLowerCase());
@@ -77,22 +91,80 @@ const loginUser = async (req, res) => {
       return res.status(403).json({ message: "Account is deactivated" });
     }
 
-    await logActivity(user._id, "Logged in", "User logged into account");
+    const roles = sortRolesForSelection(getUserRoles(user));
+
+    if (roles.length > 1) {
+      return res.json({
+        requiresRoleSelection: true,
+        roles,
+        selectionToken: generateRoleSelectionToken(user._id),
+        user: serializeAuthUser(user, roles[0]),
+      });
+    }
+
+    const activeRole = roles[0];
+    await logActivity(
+      user._id,
+      "Logged in",
+      `User logged into account as ${activeRole}`,
+    );
 
     res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      isActive: user.isActive,
-      team: user.team,
-      profileImageUrl: user.profileImageUrl,
-      themePreference: user.themePreference || "system",
-      token: generateToken(user._id),
+      ...serializeAuthUser(user, activeRole),
+      token: generateToken(user._id, activeRole),
     });
   } catch (error) {
     console.error("Login error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// @desc    Complete login by choosing active role (multi-role accounts)
+const selectLoginRole = async (req, res) => {
+  try {
+    const { role, selectionToken } = req.body;
+
+    if (!role || !selectionToken) {
+      return res.status(400).json({
+        message: "Role and selection token are required",
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(selectionToken, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({
+        message: "Role selection expired. Please log in again.",
+      });
+    }
+
+    if (decoded.purpose !== "role-selection" || !decoded.id) {
+      return res.status(401).json({ message: "Invalid role selection token" });
+    }
+
+    const user = await User.findById(decoded.id).populate("team", "name");
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: "Account is not available" });
+    }
+
+    const roles = getUserRoles(user);
+    if (!roles.includes(role)) {
+      return res.status(403).json({ message: "That role is not assigned to this account" });
+    }
+
+    await logActivity(
+      user._id,
+      "Logged in",
+      `User logged into account as ${role}`,
+    );
+
+    res.json({
+      ...serializeAuthUser(user, role),
+      token: generateToken(user._id, role),
+    });
+  } catch (error) {
+    console.error("Select login role error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -106,7 +178,11 @@ const getUserProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json(user);
+    res.json({
+      ...user.toObject(),
+      roles: getUserRoles(user),
+      role: req.user.role,
+    });
   } catch (error) {
     console.error("Get profile error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -194,16 +270,11 @@ const updateUserProfile = async (req, res) => {
       "Updated personal profile information",
     );
 
+    const activeRole = req.user?.role || getUserRoles(updatedUser)[0];
+
     res.json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      status: updatedUser.status,
-      isActive: updatedUser.isActive,
-      profileImageUrl: updatedUser.profileImageUrl,
-      themePreference: updatedUser.themePreference || "system",
-      token: generateToken(updatedUser._id),
+      ...serializeAuthUser(updatedUser, activeRole),
+      token: generateToken(updatedUser._id, activeRole),
     });
   } catch (error) {
     console.error("Update profile error:", error);
@@ -280,7 +351,7 @@ const requestPasswordReset = async (req, res) => {
       }
 
       const superAdmins = await User.find({
-        role: "superAdmin",
+        $or: [{ role: "superAdmin" }, { roles: "superAdmin" }],
         isActive: true,
       }).select("_id");
 
@@ -315,6 +386,7 @@ const requestPasswordReset = async (req, res) => {
 
 module.exports = {
   loginUser,
+  selectLoginRole,
   getUserProfile,
   updateUserProfile,
   uploadProfileImage,

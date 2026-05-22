@@ -255,7 +255,7 @@ const CreateProject = () => {
                 clearable={true}
               />
               <p className="text-xs text-gray-500 mt-1.5">
-                Select admin-created teams to assign to this project
+                Select teams to assign to this project
               </p>
             </div>
 

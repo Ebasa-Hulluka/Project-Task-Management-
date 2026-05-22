@@ -45,7 +45,7 @@ const ManageUsers = () => {
     name: "",
     email: "",
     password: "",
-    role: "teamMember",
+    roles: ["teamMember"],
   });
 
   const canAccessManageUsers =
@@ -138,12 +138,12 @@ const ManageUsers = () => {
     }
   };
 
-  const handleRoleChange = async (userId, newRole) => {
+  const handleRoleChange = async (userId, newRoles) => {
     try {
       await axiosInstance.put(API_PATHS.USERS.UPDATE_USER_ROLE(userId), {
-        role: newRole,
+        roles: newRoles,
       });
-      toast.success("User role updated successfully");
+      toast.success("User roles updated successfully");
       getUsers({ role: roleFilter, status: statusFilter });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update user role");
@@ -279,9 +279,21 @@ const ManageUsers = () => {
       name: "",
       email: "",
       password: "",
-      role: "teamMember",
+      roles: ["teamMember"],
     });
     setCreateErrors({});
+  };
+
+  const toggleCreateRole = (roleValue) => {
+    setCreateForm((prev) => {
+      const hasRole = prev.roles.includes(roleValue);
+      if (hasRole) {
+        const next = prev.roles.filter((r) => r !== roleValue);
+        return { ...prev, roles: next.length ? next : prev.roles };
+      }
+      return { ...prev, roles: [...prev.roles, roleValue] };
+    });
+    setCreateErrors((prev) => ({ ...prev, roles: "" }));
   };
 
   const openCreateModal = () => {
@@ -304,8 +316,16 @@ const ManageUsers = () => {
       nextErrors.password = "Password must be at least 6 characters";
     }
 
-    if (!roleOptions.some((option) => option.value === createForm.role)) {
-      nextErrors.role = "Select a valid role";
+    if (!createForm.roles.length) {
+      nextErrors.roles = "Select at least one role";
+    }
+
+    if (
+      createForm.roles.some(
+        (roleValue) => !roleOptions.some((option) => option.value === roleValue),
+      )
+    ) {
+      nextErrors.roles = "One or more selected roles are invalid";
     }
 
     setCreateErrors(nextErrors);
@@ -322,7 +342,7 @@ const ManageUsers = () => {
         name: createForm.name.trim(),
         email: createForm.email.trim().toLowerCase(),
         password: createForm.password,
-        role: createForm.role,
+        roles: createForm.roles,
       });
 
       toast.success("User account created successfully");
@@ -501,11 +521,11 @@ const ManageUsers = () => {
             <div className="flex flex-nowrap gap-3 overflow-x-auto pb-1">
               {[
                 { label: "Total Users", value: summary?.totalUsers ?? allUsers.length },
-                { label: "Super Admins", value: summary?.byRole?.superAdmin ?? allUsers.filter((u) => u.role === "superAdmin").length },
-                { label: "Admins", value: summary?.byRole?.admin ?? allUsers.filter((u) => u.role === "admin").length },
-                { label: "Project Managers", value: summary?.byRole?.projectManager ?? allUsers.filter((u) => u.role === "projectManager").length },
-                { label: "Team Members", value: summary?.byRole?.teamMember ?? allUsers.filter((u) => u.role === "teamMember").length },
-                { label: "Testers", value: summary?.byRole?.tester ?? allUsers.filter((u) => u.role === "tester").length },
+                { label: "Super Admins", value: summary?.byRole?.superAdmin ?? allUsers.filter((u) => (u.roles || [u.role]).includes("superAdmin")).length },
+                { label: "Admins", value: summary?.byRole?.admin ?? allUsers.filter((u) => (u.roles || [u.role]).includes("admin")).length },
+                { label: "Project Managers", value: summary?.byRole?.projectManager ?? allUsers.filter((u) => (u.roles || [u.role]).includes("projectManager")).length },
+                { label: "Team Members", value: summary?.byRole?.teamMember ?? allUsers.filter((u) => (u.roles || [u.role]).includes("teamMember")).length },
+                { label: "Testers", value: summary?.byRole?.tester ?? allUsers.filter((u) => (u.roles || [u.role]).includes("tester")).length },
                 { label: "Deactivated", value: summary?.byStatus?.deactivated ?? allUsers.filter((u) => u.isActive === false).length },
               ].map((item) => (
                 <div
@@ -704,30 +724,37 @@ const ManageUsers = () => {
 
           <div>
             <label className="text-sm font-semibold app-text block mb-1.5">
-              Role
+              Roles (select one or more)
             </label>
-            <select
-              value={createForm.role}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, role: e.target.value }))}
-              className="input w-full"
-              disabled={createLoading}
-            >
+            <div className="space-y-2 rounded-lg border border-gray-200 p-3">
               {roleOptions.map((option) => (
-                <option
+                <label
                   key={option.value}
-                  value={option.value}
-                  disabled={option.value === "admin" && !isSuperAdmin}
+                  className={`flex items-center gap-2 text-sm ${
+                    option.value === "admin" && !isSuperAdmin
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer"
+                  }`}
                 >
-                  {option.label}
-                </option>
+                  <input
+                    type="checkbox"
+                    checked={createForm.roles.includes(option.value)}
+                    disabled={
+                      createLoading || (option.value === "admin" && !isSuperAdmin)
+                    }
+                    onChange={() => toggleCreateRole(option.value)}
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span>{option.label}</span>
+                </label>
               ))}
-            </select>
-            {createErrors.role && (
-              <p className="mt-1.5 text-xs text-red-500">{createErrors.role}</p>
+            </div>
+            {createErrors.roles && (
+              <p className="mt-1.5 text-xs text-red-500">{createErrors.roles}</p>
             )}
             {!isSuperAdmin && (
               <p className="mt-1.5 text-xs text-gray-500">
-                Only the super admin can create admin accounts.
+                Only the super admin can assign the admin role.
               </p>
             )}
           </div>

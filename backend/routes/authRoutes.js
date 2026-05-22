@@ -5,6 +5,7 @@ const upload = require("../middlewares/uploadMiddleware");
 
 const {
   loginUser,
+  selectLoginRole,
   getUserProfile,
   updateUserProfile,
   uploadProfileImage,
@@ -13,6 +14,7 @@ const {
 } = require("../controllers/authController");
 
 router.post("/login", loginUser);
+router.post("/select-role", selectLoginRole);
 router.post("/forgot-password", requestPasswordReset);
 
 // Protected Routes

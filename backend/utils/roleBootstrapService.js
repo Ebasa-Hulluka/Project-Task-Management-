@@ -34,6 +34,20 @@ const ensureRoleHierarchy = async () => {
     },
     { $set: { status: "active" } },
   );
+
+  const usersMissingRoles = await User.find({
+    $or: [{ roles: { $exists: false } }, { roles: { $size: 0 } }],
+    role: { $exists: true, $ne: null },
+  }).select("_id role");
+
+  if (usersMissingRoles.length > 0) {
+    await Promise.all(
+      usersMissingRoles.map((user) =>
+        User.updateOne({ _id: user._id }, { $set: { roles: [user.role] } }),
+      ),
+    );
+    console.log(`Migrated roles array for ${usersMissingRoles.length} user(s)`);
+  }
 };
 
 module.exports = {

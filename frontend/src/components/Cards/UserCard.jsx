@@ -13,6 +13,7 @@ import {
 } from "react-icons/lu";
 import { USER_ROLES } from "../../utils/data";
 import { getInitials } from "../../utils/helper";
+import { getUserRoles, getRoleLabel } from "../../utils/userRoles";
 import ReactivateButton from "../ReactivateButton";
 
 const UserCard = ({
@@ -48,7 +49,6 @@ const UserCard = ({
     _id,
     name,
     email,
-    role,
     profileImageUrl,
     team,
     pendingTasks = 0,
@@ -59,11 +59,12 @@ const UserCard = ({
     isActive = true,
   } = user;
 
+  const userRoles = getUserRoles(user);
   const requesterIsSuperAdmin = currentUserRole === "superAdmin";
   const requesterIsAdmin =
     currentUserRole === "superAdmin" || currentUserRole === "admin";
-  const targetIsSuperAdmin = role === "superAdmin";
-  const targetIsAdmin = role === "admin";
+  const targetIsSuperAdmin = userRoles.includes("superAdmin");
+  const targetIsAdmin = userRoles.includes("admin");
   const canChangeRole =
     requesterIsAdmin &&
     !targetIsSuperAdmin &&
@@ -98,8 +99,8 @@ const UserCard = ({
     ? [{ label: "Admin", value: "admin" }, ...USER_ROLES]
     : USER_ROLES;
 
-  const getRoleBadgeColor = () => {
-    switch (role) {
+  const getRoleBadgeColor = (roleValue) => {
+    switch (roleValue) {
       case "superAdmin":
         return "bg-rose-100 text-rose-700 border-rose-200";
       case "admin":
@@ -115,8 +116,8 @@ const UserCard = ({
     }
   };
 
-  const getRoleIcon = () => {
-    switch (role) {
+  const getRoleIcon = (roleValue) => {
+    switch (roleValue) {
       case "superAdmin":
         return <LuCrown className="text-rose-600" />;
       case "admin":
@@ -132,29 +133,17 @@ const UserCard = ({
     }
   };
 
-  const getRoleDisplay = () => {
-    switch (role) {
-      case "superAdmin":
-        return "Super Admin";
-      case "admin":
-        return "Admin";
-      case "projectManager":
-        return "Project Manager";
-      case "teamMember":
-        return "Team Member";
-      case "tester":
-        return "Tester";
-      default:
-        return role;
-    }
-  };
+  const handleToggleRole = async (roleValue) => {
+    if (!onRoleChange) return;
 
-  const handleRoleChange = async (newRole) => {
-    setShowRoleDropdown(false);
-    setShowMenu(false);
-    if (onRoleChange) {
-      await onRoleChange(_id, newRole);
-    }
+    const hasRole = userRoles.includes(roleValue);
+    const nextRoles = hasRole
+      ? userRoles.filter((r) => r !== roleValue)
+      : [...userRoles, roleValue];
+
+    if (!nextRoles.length) return;
+
+    await onRoleChange(_id, nextRoles);
   };
 
   return (
@@ -179,21 +168,27 @@ const UserCard = ({
                       onClick={() => setShowRoleDropdown(!showRoleDropdown)}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center justify-between"
                     >
-                      <span>Change Role</span>
+                      <span>Change Roles</span>
                       <span className="text-xs">-&gt;</span>
                     </button>
 
                     {showRoleDropdown && (
-                      <div className="absolute left-full top-0 ml-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200">
+                      <div className="absolute left-full top-0 ml-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                        <p className="px-4 py-1.5 text-[10px] uppercase tracking-wide text-gray-400">
+                          Toggle roles
+                        </p>
                         {roleOptions.map((r) => (
                           <button
                             key={r.value}
-                            onClick={() => handleRoleChange(r.value)}
+                            type="button"
+                            onClick={() => handleToggleRole(r.value)}
                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center justify-between"
-                            disabled={r.value === role}
+                            disabled={
+                              userRoles.length === 1 && userRoles.includes(r.value)
+                            }
                           >
                             <span>{r.label}</span>
-                            {r.value === role && (
+                            {userRoles.includes(r.value) && (
                               <LuCheck className="text-green-600 text-xs" />
                             )}
                           </button>
@@ -266,12 +261,15 @@ const UserCard = ({
         </div>
 
         <div className="flex items-center flex-wrap gap-2 mt-2.5">
-          <div
-            className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor()} flex items-center gap-1`}
-          >
-            {getRoleIcon()}
-            <span>{getRoleDisplay()}</span>
-          </div>
+          {userRoles.map((roleValue) => (
+            <div
+              key={roleValue}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(roleValue)} flex items-center gap-1`}
+            >
+              {getRoleIcon(roleValue)}
+              <span>{getRoleLabel(roleValue)}</span>
+            </div>
+          ))}
           <div
             className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusBadgeStyles(effectiveStatus)}`}
           >

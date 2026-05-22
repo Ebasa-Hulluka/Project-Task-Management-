@@ -2,6 +2,7 @@ const Team = require("../models/Team");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 const { notifyAdmins } = require("../utils/notificationService");
+const { getUserRoles } = require("../utils/userRoles");
 
 const TEAM_MEMBER_ONLY_MESSAGE = "Only active team members can be selected for a team.";
 
@@ -19,9 +20,13 @@ const validateTeamMemberIds = async (memberIds) => {
 
   const usersCount = await User.countDocuments({
     _id: { $in: memberIds },
-    role: "teamMember",
     isActive: { $ne: false },
     status: "active",
+    $or: [
+      { roles: "teamMember" },
+      { role: "teamMember", roles: { $exists: false } },
+      { role: "teamMember", roles: { $size: 0 } },
+    ],
   });
 
   return usersCount === memberIds.length;
@@ -86,7 +91,8 @@ const createTeam = async (req, res) => {
     await notifyAdmins({
       type: "team_created",
       message: `New team created: ${team.name}`,
-      link: "/admin/teams",
+      link:
+        req.user.role === "projectManager" ? "/manager/teams" : "/admin/teams",
     });
 
     res.status(201).json({
@@ -313,7 +319,12 @@ const addMemberToTeam = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.role !== "teamMember" || user.isActive === false || user.status !== "active") {
+    const isTeamMember =
+      getUserRoles(user).includes("teamMember") &&
+      user.isActive !== false &&
+      user.status === "active";
+
+    if (!isTeamMember) {
       return res.status(400).json({ message: TEAM_MEMBER_ONLY_MESSAGE });
     }
 

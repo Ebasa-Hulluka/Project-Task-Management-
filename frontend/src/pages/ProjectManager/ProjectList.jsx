@@ -36,7 +36,12 @@ const ProjectList = () => {
     totalCount: totalProjectCount,
     remainingCount: remainingProjectsCount,
     showMore: showMoreProjects,
-  } = useIncrementalList(filteredProjects, 4, [filteredProjects.length, searchTerm, statusFilter]);
+    batchSize: projectBatchSize,
+  } = useIncrementalList(
+    filteredProjects,
+    { batchSize: 6, columns: 3 },
+    [filteredProjects.length, searchTerm, statusFilter],
+  );
 
   const navigate = useNavigate();
 
@@ -257,7 +262,7 @@ const ProjectList = () => {
             totalCount={totalProjectCount}
             remainingCount={remainingProjectsCount}
             onShowMore={showMoreProjects}
-            batchSize={4}
+            batchSize={projectBatchSize}
             itemLabel="projects"
           />
         )}
@@ -267,7 +272,7 @@ const ProjectList = () => {
           onClose={() => !deleting && setDeleteTarget(null)}
           onConfirm={confirmDeleteProject}
           title="Delete Project"
-          message="Are you sure you want to delete this project? This action cannot be undone."
+          message="Are you sure you want to delete this project? All tasks in this project will also be deleted. This action cannot be undone."
           itemName={deleteTarget?.name}
           loading={deleting}
         />

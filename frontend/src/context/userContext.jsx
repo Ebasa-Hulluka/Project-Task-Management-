@@ -111,13 +111,20 @@ const UserProvider = ({ children }) => {
         password,
       });
 
+      if (response.data?.requiresRoleSelection) {
+        sessionStorage.setItem("pendingLogin", JSON.stringify(response.data));
+        return {
+          success: true,
+          requiresRoleSelection: true,
+          roles: response.data.roles || [],
+          user: response.data.user,
+        };
+      }
+
       const { token, ...userData } = response.data;
 
-      // Save to localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(userData));
-
-      // Update state
       setUser(userData);
 
       return { success: true, user: userData };
@@ -144,9 +151,36 @@ const UserProvider = ({ children }) => {
     }
   };
 
+  const selectLoginRole = async (role, selectionToken) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await axiosInstance.post(API_PATHS.AUTH.SELECT_LOGIN_ROLE, {
+        role,
+        selectionToken,
+      });
+
+      const { token, ...userData } = response.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(userData);
+
+      return { success: true, user: userData };
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to complete login";
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Logout user
   const logout = (options = {}) => {
     const { redirect = false, path = "/" } = options;
+    sessionStorage.removeItem("pendingLogin");
     clearUser();
     if (redirect && window.location.pathname !== path) {
       window.location.replace(path);
@@ -321,6 +355,7 @@ const UserProvider = ({ children }) => {
 
     // Auth actions
     login,
+    selectLoginRole,
     logout,
     clearUser,
     fetchUserProfile,

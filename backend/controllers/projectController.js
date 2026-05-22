@@ -291,22 +291,15 @@ const deleteProject = async (req, res) => {
       });
     }
 
-    if (
-      req.user.role !== "projectManager" &&
-      project.createdBy.toString() !== req.user._id.toString()
-    ) {
+    if (project.createdBy.toString() !== req.user._id.toString()) {
       return res
         .status(403)
         .json({ message: "Not authorized to delete this project" });
     }
 
-    const taskCount = await Task.countDocuments({ projectId: id });
-    if (taskCount > 0) {
-      return res.status(400).json({
-        message:
-          "Cannot delete project with existing tasks. Delete tasks first.",
-      });
-    }
+    const { deletedCount: deletedTaskCount } = await Task.deleteMany({
+      projectId: id,
+    });
 
     await Team.updateMany(
       { projects: id },
@@ -314,7 +307,13 @@ const deleteProject = async (req, res) => {
     );
 
     await project.deleteOne();
-    res.json({ message: "Project deleted successfully" });
+
+    res.json({
+      message:
+        deletedTaskCount > 0
+          ? `Project and ${deletedTaskCount} associated task(s) deleted successfully`
+          : "Project deleted successfully",
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

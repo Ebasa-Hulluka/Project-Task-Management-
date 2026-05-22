@@ -28,7 +28,12 @@ const ManageProjects = () => {
     totalCount: totalProjectCount,
     remainingCount: remainingProjectsCount,
     showMore: showMoreProjects,
-  } = useIncrementalList(filteredProjects, 4, [filteredProjects.length, searchTerm, statusFilter]);
+    batchSize: projectBatchSize,
+  } = useIncrementalList(
+    filteredProjects,
+    { batchSize: 6, columns: 3 },
+    [filteredProjects.length, searchTerm, statusFilter],
+  );
 
   const navigate = useNavigate();
 
@@ -216,7 +221,7 @@ const ManageProjects = () => {
             totalCount={totalProjectCount}
             remainingCount={remainingProjectsCount}
             onShowMore={showMoreProjects}
-            batchSize={4}
+            batchSize={projectBatchSize}
             itemLabel="projects"
           />
         )}

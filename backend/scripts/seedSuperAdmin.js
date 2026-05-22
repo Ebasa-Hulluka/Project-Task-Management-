@@ -37,6 +37,8 @@ const seedSuperAdmin = async () => {
       existingSuperAdmin.name = seedName;
       existingSuperAdmin.email = seedEmail;
       existingSuperAdmin.password = hashedPassword;
+      existingSuperAdmin.roles = ["superAdmin"];
+      existingSuperAdmin.role = "superAdmin";
       existingSuperAdmin.status = "active";
       existingSuperAdmin.isActive = true;
 
@@ -46,9 +48,14 @@ const seedSuperAdmin = async () => {
     }
 
     if (existingEmailUser) {
-      console.log(
-        `A user already exists with email "${seedEmail}" and role "${existingEmailUser.role}". Please delete or update that account before seeding a new super admin.`,
-      );
+      existingEmailUser.name = seedName;
+      existingEmailUser.password = hashedPassword;
+      existingEmailUser.roles = ["superAdmin"];
+      existingEmailUser.role = "superAdmin";
+      existingEmailUser.status = "active";
+      existingEmailUser.isActive = true;
+      await existingEmailUser.save();
+      console.log("Promoted existing account to super admin:", existingEmailUser.email);
       return;
     }
 
@@ -56,6 +63,7 @@ const seedSuperAdmin = async () => {
       name: seedName,
       email: seedEmail,
       password: hashedPassword,
+      roles: ["superAdmin"],
       role: "superAdmin",
       status: "active",
       isActive: true,

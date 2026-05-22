@@ -17,21 +17,29 @@ const router = express.Router();
 // All team routes are protected
 router.use(protect);
 
-// Team Routes - Admin only for modifications
+// Team Routes - Admin & Project Manager can create, edit, and delete
 router
   .route("/")
   .get(getAllTeams) // All authenticated users can view
-  .post(authorize("admin"), createTeam);
+  .post(authorize("admin", "projectManager"), createTeam);
 
 router
   .route("/:id")
   .get(getTeamById)
-  .put(authorize("admin"), updateTeam)
-  .delete(authorize("admin"), deleteTeam);
+  .put(authorize("admin", "projectManager"), updateTeam)
+  .delete(authorize("admin", "projectManager"), deleteTeam);
 
 // Member Management Routes
-router.post("/:id/members", authorize("admin"), addMemberToTeam);
-router.delete("/:id/members/:userId", authorize("admin"), removeMemberFromTeam);
-router.put("/:id/lead", authorize("admin"), updateTeamLead);
+router.post(
+  "/:id/members",
+  authorize("admin", "projectManager"),
+  addMemberToTeam,
+);
+router.delete(
+  "/:id/members/:userId",
+  authorize("admin", "projectManager"),
+  removeMemberFromTeam,
+);
+router.put("/:id/lead", authorize("admin", "projectManager"), updateTeamLead);
 
 module.exports = router;

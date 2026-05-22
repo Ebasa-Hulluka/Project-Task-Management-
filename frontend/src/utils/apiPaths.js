@@ -3,6 +3,7 @@ export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 export const API_PATHS = {
   AUTH: {
     LOGIN: "/api/auth/login",
+    SELECT_LOGIN_ROLE: "/api/auth/select-role",
     FORGOT_PASSWORD: "/api/auth/forgot-password",
     GET_PROFILE: "/api/auth/profile",
     UPDATE_PROFILE: "/api/auth/profile",

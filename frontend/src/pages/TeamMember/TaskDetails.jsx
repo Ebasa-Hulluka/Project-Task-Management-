@@ -395,8 +395,9 @@ const TaskDetails = () => {
   const canReview =
     !isViewOnlyTask &&
     task.status === "In Review" &&
-    ((isTester && testerId === user?._id) ||
-      user?.role === "projectManager");
+    isTester &&
+    testerId &&
+    String(testerId) === String(user?._id);
 
   const assignedNames =
     task.assignedTo?.map((u) => u.name).filter(Boolean).join(", ") || "Unassigned";
