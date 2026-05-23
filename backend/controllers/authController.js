@@ -65,7 +65,10 @@ const uploadProfileImage = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const normalizedEmail = (email || "").trim().toLowerCase();
+    let normalizedEmail = (email || "").trim().toLowerCase();
+    if (normalizedEmail.endsWith("@gmial.com")) {
+      normalizedEmail = normalizedEmail.replace("@gmial.com", "@gmail.com");
+    }
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({ message: "Email and password are required" });
@@ -209,7 +212,10 @@ const updateUserProfile = async (req, res) => {
     } = req.body;
 
     const normalizedName = typeof name === "string" ? name.trim() : "";
-    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    let normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (normalizedEmail.endsWith("@gmial.com")) {
+      normalizedEmail = normalizedEmail.replace("@gmial.com", "@gmail.com");
+    }
     const existingName = (user.name || "").trim();
     const existingEmail = (user.email || "").trim().toLowerCase();
 
@@ -328,7 +334,10 @@ const changeUserPassword = async (req, res) => {
 
 const requestPasswordReset = async (req, res) => {
   try {
-    const normalizedEmail = String(req.body?.email || "").trim().toLowerCase();
+    let normalizedEmail = String(req.body?.email || "").trim().toLowerCase();
+    if (normalizedEmail.endsWith("@gmial.com")) {
+      normalizedEmail = normalizedEmail.replace("@gmial.com", "@gmail.com");
+    }
 
     if (!isValidEmailFormat(normalizedEmail)) {
       return res.status(400).json({ message: "Please enter a valid email address." });

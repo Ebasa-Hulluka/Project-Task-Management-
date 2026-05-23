@@ -64,20 +64,32 @@ const getUsersReport = async (req, res) => {
   try {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [totalUsers, teamsCount, roleCounts] = await Promise.all([
+    const [totalUsers, teamsCount, roleCountsRaw] = await Promise.all([
       User.countDocuments(),
       Team.countDocuments(),
       User.aggregate([
         {
+          $project: {
+            roleList: {
+              $cond: [
+                { $gt: [{ $size: { $ifNull: ["$roles", []] } }, 0] },
+                "$roles",
+                ["$role"],
+              ],
+            },
+          },
+        },
+        { $unwind: "$roleList" },
+        {
           $group: {
-            _id: "$role",
+            _id: "$roleList",
             count: { $sum: 1 },
           },
         },
       ]),
     ]);
 
-    const roleCountMap = roleCounts.reduce((acc, item) => {
+    const roleCountMap = roleCountsRaw.reduce((acc, item) => {
       acc[item._id] = item.count;
       return acc;
     }, {});
@@ -93,6 +105,9 @@ const getUsersReport = async (req, res) => {
       (roleCountMap.teamMember || 0) +
       (roleCountMap.teammember || 0) +
       (roleCountMap.member || 0);
+    const testerCount =
+      (roleCountMap.tester || 0) +
+      (roleCountMap.Tester || 0);
 
     // Uses updatedAt as activity proxy unless explicit login-tracking exists.
     // Exclude deactivated/pending/rejected accounts from "Active Today".
@@ -113,6 +128,7 @@ const getUsersReport = async (req, res) => {
         admin: adminCount,
         projectManager: projectManagerCount,
         teamMember: teamMemberCount,
+        tester: testerCount,
       },
       activeToday,
       teams: teamsCount,

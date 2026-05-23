@@ -33,6 +33,7 @@ const emptyUserReport = {
     admin: 0,
     projectManager: 0,
     teamMember: 0,
+    tester: 0,
   },
 };
 
@@ -425,6 +426,12 @@ const Reports = () => {
                       <span>Team Members</span>
                       <span className="font-semibold">
                         {activeReportData.byRole?.teamMember || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Testers</span>
+                      <span className="font-semibold">
+                        {activeReportData.byRole?.tester || 0}
                       </span>
                     </div>
                   </div>

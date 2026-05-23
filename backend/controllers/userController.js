@@ -193,7 +193,10 @@ const createUser = async (req, res) => {
     } = req.body;
 
     const normalizedName = String(name || "").trim();
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    let normalizedEmail = String(email || "").trim().toLowerCase();
+    if (normalizedEmail.endsWith("@gmial.com")) {
+      normalizedEmail = normalizedEmail.replace("@gmial.com", "@gmail.com");
+    }
     const normalizedPassword = String(password || "");
     const normalizedRoles = normalizeRolesInput({ role, roles: rolesBody });
     const roleValidation = validateAssignableRoles(normalizedRoles, req.user);
