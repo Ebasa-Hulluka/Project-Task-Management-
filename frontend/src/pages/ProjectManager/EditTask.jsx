@@ -157,7 +157,22 @@ const EditTask = () => {
     const newErrors = {};
     if (!formData.title.trim()) newErrors.title = "Task title is required";
     if (!formData.projectId) newErrors.projectId = "Please select a project";
-    if (!formData.dueDate) newErrors.dueDate = "Due date is required";
+    
+    if (!formData.dueDate) {
+      newErrors.dueDate = "Due date is required";
+    } else if (formData.projectId) {
+      const selectedProject = projects.find((p) => p._id === formData.projectId);
+      if (
+        selectedProject &&
+        selectedProject.endDate &&
+        new Date(formData.dueDate) > new Date(selectedProject.endDate)
+      ) {
+        newErrors.dueDate = `Task due date must be on or before the project deadline (${new Date(
+          selectedProject.endDate
+        ).toLocaleDateString()})`;
+      }
+    }
+
     if (formData.assignedTo.length === 0) {
       newErrors.assignedTo = "Please assign at least one team member";
     }

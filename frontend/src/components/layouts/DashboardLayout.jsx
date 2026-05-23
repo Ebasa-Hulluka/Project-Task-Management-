@@ -105,7 +105,7 @@ const DashboardLayout = ({ children }) => {
       `}
       >
         <div className="text-center text-sm app-text-muted">
-          © {new Date().getFullYear()} Task Manager. All rights reserved.
+          © {new Date().getFullYear()} Project Manager. All rights reserved.
         </div>
       </footer>
     </div>

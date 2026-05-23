@@ -200,16 +200,28 @@ const createTask = async (req, res) => {
         .json({ message: "assignedTo must be an array of user IDs" });
     }
 
-    // If Project Manager, verify they own the project
-    if (req.user.role === "projectManager" && projectId) {
+    // Verify project and check deadline constraint
+    if (projectId) {
       const project = await Project.findById(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      // If Project Manager, verify they own the project
       if (
-        !project ||
+        req.user.role === "projectManager" &&
         project.createdBy.toString() !== req.user._id.toString()
       ) {
         return res
           .status(403)
           .json({ message: "Not authorized to create tasks in this project" });
+      }
+
+      // Validate task deadline is before project deadline
+      if (project.endDate && dueDate && new Date(dueDate) > new Date(project.endDate)) {
+        return res.status(400).json({
+          message: `Task due date must be on or before the project deadline (${new Date(project.endDate).toLocaleDateString()})`,
+        });
       }
     }
 
@@ -266,6 +278,21 @@ const updateTask = async (req, res) => {
       return res
         .status(403)
         .json({ message: "Not authorized to update this task" });
+    }
+
+    const targetProjectId = req.body.projectId || task.projectId;
+    const targetDueDate = req.body.dueDate || task.dueDate;
+
+    if (targetProjectId) {
+      const project = await Project.findById(targetProjectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      if (project.endDate && targetDueDate && new Date(targetDueDate) > new Date(project.endDate)) {
+        return res.status(400).json({
+          message: `Task due date must be on or before the project deadline (${new Date(project.endDate).toLocaleDateString()})`,
+        });
+      }
     }
 
     task.title = req.body.title || task.title;

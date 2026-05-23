@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { LuMail, LuMapPin, LuPhone, LuLinkedin } from "react-icons/lu";
 import {
@@ -75,7 +75,7 @@ const Footer = () => {
             <img src={deboLogo} alt="Debo Engineering" className="h-24 w-auto" />
             <div className="ml-3">
               <h2 className="text-3xl font-bold">Debo</h2>
-              <p className="text-sm text-white/85">Task Manager</p>
+              <p className="text-sm text-white/85">Project Manager</p>
             </div>
           </div>
 

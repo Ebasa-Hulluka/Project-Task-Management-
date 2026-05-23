@@ -307,9 +307,9 @@ const SideMenu = ({ isOpen, setIsOpen, isMobile }) => {
         {/* Logo Area */}
         <div className="h-16 flex items-center justify-between px-4 app-border-bottom">
           {!collapsed ? (
-            <h1 className="text-xl font-bold text-primary">Task Manager</h1>
+            <h1 className="text-xl font-bold text-primary">Project Manager</h1>
           ) : (
-            <h1 className="text-xl font-bold text-primary mx-auto">TM</h1>
+            <h1 className="text-xl font-bold text-primary mx-auto">PM</h1>
           )}
 
           {/* Collapse Toggle */}
@@ -455,7 +455,7 @@ const SideMenu = ({ isOpen, setIsOpen, isMobile }) => {
           >
             {/* Mobile Logo */}
             <div className="h-16 flex items-center px-4 app-border-bottom">
-              <h1 className="text-xl font-bold text-primary">Task Manager</h1>
+              <h1 className="text-xl font-bold text-primary">Project Manager</h1>
             </div>
 
             {/* Mobile User Profile */}

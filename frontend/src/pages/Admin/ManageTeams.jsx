@@ -40,7 +40,12 @@ const ManageTeams = () => {
     totalCount: totalTeamCount,
     remainingCount: remainingTeamsCount,
     showMore: showMoreTeams,
-  } = useIncrementalList(filteredTeams, 4, [filteredTeams.length, searchTerm]);
+    batchSize: teamBatchSize,
+  } = useIncrementalList(
+    filteredTeams,
+    { batchSize: 6, columns: 3 },
+    [filteredTeams.length, searchTerm],
+  );
 
   const getTeamMemberCount = (team) => {
     if (typeof team?.memberCount === "number") return team.memberCount;
@@ -492,7 +497,7 @@ const ManageTeams = () => {
             totalCount={totalTeamCount}
             remainingCount={remainingTeamsCount}
             onShowMore={showMoreTeams}
-            batchSize={4}
+            batchSize={teamBatchSize}
             itemLabel="teams"
           />
         )}

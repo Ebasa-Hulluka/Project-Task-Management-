@@ -57,12 +57,17 @@ const ManageUsers = () => {
     totalCount: totalUserCount,
     remainingCount: remainingUsersCount,
     showMore: showMoreUsers,
-  } = useIncrementalList(filteredUsers, 4, [
-    filteredUsers.length,
-    emailQuery,
-    roleFilter,
-    statusFilter,
-  ]);
+    batchSize: userBatchSize,
+  } = useIncrementalList(
+    filteredUsers,
+    { batchSize: 8, columns: 4 },
+    [
+      filteredUsers.length,
+      emailQuery,
+      roleFilter,
+      statusFilter,
+    ],
+  );
 
   const roleOptions = [
     { value: "teamMember", label: "Team Member" },
@@ -510,7 +515,7 @@ const ManageUsers = () => {
             totalCount={totalUserCount}
             remainingCount={remainingUsersCount}
             onShowMore={showMoreUsers}
-            batchSize={4}
+            batchSize={userBatchSize}
             itemLabel="users"
           />
         )}
