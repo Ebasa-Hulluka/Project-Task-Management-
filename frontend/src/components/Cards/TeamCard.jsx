@@ -149,33 +149,33 @@ const TeamCard = ({
             {!viewOnly && <span className="text-xs text-primary">View list</span>}
           </div>
           {viewOnly ? (
-            <ul className="space-y-2 mt-2">
+            <div className="flex flex-wrap gap-1.5 mt-2">
               {members.map((member) => {
                 const memberId = String(member?._id || member || "");
                 const isLead = Boolean(leadId && memberId === leadId);
                 return (
-                  <li
+                  <div
                     key={memberId}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2"
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs border transition-all ${
+                      isLead
+                        ? "bg-amber-50 border-amber-200 text-amber-800"
+                        : "bg-gray-50 border-gray-100 text-gray-600"
+                    }`}
+                    title={`${member?.name || "Unknown"} (${member?.email || "No email"})`}
                   >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">
-                        {member?.name || "Unknown"}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {member?.email || ""}
-                      </p>
-                    </div>
-                    {isLead && (
-                      <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
-                        <LuCrown className="text-xs" />
-                        Lead
+                    {isLead && <LuCrown className="text-amber-500 text-[10px] shrink-0" />}
+                    <span className="font-semibold text-gray-700">
+                      {member?.name || "Unknown"}
+                    </span>
+                    {member?.email && (
+                      <span className="text-[10px] text-gray-400 font-normal truncate max-w-[120px]">
+                        {member.email}
                       </span>
                     )}
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           ) : (
             <AvatarGroup users={members} maxVisible={5} size="sm" />
           )}
