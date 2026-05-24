@@ -10,6 +10,10 @@ import {
   LuUsers,
   LuEye,
   LuClipboardList,
+  LuUserPlus,
+  LuUserCheck,
+  LuBadgeCheck,
+  LuFolder,
 } from "react-icons/lu";
 
 import Progress from "../layouts/Progress";
@@ -47,6 +51,9 @@ const TaskCard = ({
     attachments = [],
     todoChecklist = [],
     projectId,
+    createdBy,
+    completedBy,
+    testedBy,
   } = task;
 
   const safeAssignedTo = Array.isArray(assignedTo) ? assignedTo : [];
@@ -116,19 +123,26 @@ const TaskCard = ({
         className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer"
         onClick={handleClick}
       >
-        <div className="flex items-start justify-between mb-2">
+        <div className="flex items-start justify-between mb-1.5">
           <h4 className="font-medium text-gray-800 line-clamp-1">{title}</h4>
           <span
-            className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(priority)}`}
+            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getPriorityColor(priority)}`}
           >
             {priority}
           </span>
         </div>
 
+        {projectId && typeof projectId === "object" && (
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 mb-2">
+            <LuFolder className="text-[9px]" />
+            <span className="truncate">{projectId.name}</span>
+          </div>
+        )}
+
         <p className="text-xs text-gray-500 line-clamp-2 mb-3">{description}</p>
 
         <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-1.5 text-gray-500">
             <LuCalendar className="text-gray-400" />
             <span>{moment(dueDate).format("MMM D")}</span>
           </div>
@@ -139,6 +153,29 @@ const TaskCard = ({
             </span>
           )}
         </div>
+
+        {(createdBy || completedBy || testedBy) && (
+          <div className="mt-3 pt-2 border-t border-gray-100 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-gray-400">
+            {createdBy && (
+              <span className="flex items-center gap-1 truncate max-w-[90px]" title={`Created by: ${createdBy.name || createdBy.email}`}>
+                <LuUserPlus className="text-[9px]" />
+                {createdBy.name || createdBy.email}
+              </span>
+            )}
+            {completedBy && (
+              <span className="flex items-center gap-1 text-emerald-600 truncate max-w-[90px]" title={`Completed by: ${completedBy.name || completedBy.email}`}>
+                <LuUserCheck className="text-[9px]" />
+                {completedBy.name || completedBy.email}
+              </span>
+            )}
+            {testedBy && (
+              <span className="flex items-center gap-1 text-blue-600 truncate max-w-[90px]" title={`Tested by: ${testedBy.name || testedBy.email}`}>
+                <LuBadgeCheck className="text-[9px]" />
+                {testedBy.name || testedBy.email}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -171,9 +208,10 @@ const TaskCard = ({
 
       {/* Project Name (if available) */}
       {projectId && typeof projectId === "object" && (
-        <div className="px-4 mb-2">
+        <div className="px-4 mb-2 flex items-center gap-1">
+          <LuFolder className="text-xs text-gray-400" />
           <span className="text-xs text-gray-400">Project:</span>
-          <span className="text-xs font-medium text-gray-600 ml-2">
+          <span className="text-xs font-medium text-gray-600 ml-1">
             {projectId.name}
           </span>
         </div>
@@ -251,6 +289,45 @@ const TaskCard = ({
               <span className="text-xs text-gray-500">Assigned to:</span>
             </div>
             <AvatarGroup users={safeAssignedTo} maxVisible={3} size="sm" />
+          </div>
+        )}
+
+        {/* Created By */}
+        {createdBy && (
+          <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+            <div className="flex items-center gap-2">
+              <LuUserPlus className="text-gray-400 text-xs" />
+              <span className="text-xs text-gray-500">Created by:</span>
+            </div>
+            <span className="text-xs font-medium text-gray-700 max-w-[180px] truncate" title={createdBy.email}>
+              {createdBy.name || createdBy.email}
+            </span>
+          </div>
+        )}
+
+        {/* Completed By */}
+        {completedBy && (
+          <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+            <div className="flex items-center gap-2">
+              <LuUserCheck className="text-emerald-500 text-xs" />
+              <span className="text-xs text-gray-500">Completed by:</span>
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 max-w-[180px] truncate" title={completedBy.email}>
+              {completedBy.name || completedBy.email}
+            </span>
+          </div>
+        )}
+
+        {/* Tested By */}
+        {testedBy && (
+          <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+            <div className="flex items-center gap-2">
+              <LuBadgeCheck className="text-blue-500 text-xs" />
+              <span className="text-xs text-gray-500">Tested by:</span>
+            </div>
+            <span className="text-xs font-semibold text-blue-600 max-w-[180px] truncate" title={testedBy.email}>
+              {testedBy.name || testedBy.email}
+            </span>
           </div>
         )}
 

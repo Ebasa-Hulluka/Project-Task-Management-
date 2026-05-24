@@ -56,6 +56,8 @@ const taskSchema = new mongoose.Schema(
     tester: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project" }, // NEW: Link to project
+    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    testedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     /** PM reference materials (requirements, repo links, specs) */
     attachments: [taskAttachmentSchema],
     /** Team member delivery proof when checklist is complete — visible to tester */

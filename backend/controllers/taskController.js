@@ -22,12 +22,22 @@ const populateTask = (query) =>
     .populate("assignedTo", "name email profileImageUrl")
     .populate("tester", "name email profileImageUrl")
     .populate("projectId", "name")
+    .populate("createdBy", "name email profileImageUrl")
+    .populate("completedBy", "name email profileImageUrl")
+    .populate("testedBy", "name email profileImageUrl")
     .populate("completionAttachments.uploadedBy", "name email profileImageUrl");
 
-const completeOrSendToReview = (task) => {
+const completeOrSendToReview = (task, userId) => {
   task.todoChecklist.forEach((item) => (item.completed = true));
   task.progress = 100;
-  task.status = task.tester ? "In Review" : "Completed";
+  if (task.tester) {
+    task.status = "In Review";
+  } else {
+    task.status = "Completed";
+    if (userId) {
+      task.completedBy = userId;
+    }
+  }
 };
 
 // @desc    Get all tasks (Admin: all, Manager: their projects, User: assigned)
@@ -153,7 +163,9 @@ const getTaskById = async (req, res) => {
       .populate("assignedTo", "name email profileImageUrl")
       .populate("tester", "name email profileImageUrl")
       .populate("projectId", "name")
-      .populate("createdBy", "name")
+      .populate("createdBy", "name email profileImageUrl")
+      .populate("completedBy", "name email profileImageUrl")
+      .populate("testedBy", "name email profileImageUrl")
       .populate("reviewHistory.tester", "name email profileImageUrl");
 
     if (!task) {
@@ -411,7 +423,10 @@ const updateTaskStatus = async (req, res) => {
     task.status = requestedStatus;
 
     if (requestedStatus === "Completed") {
-      completeOrSendToReview(task);
+      completeOrSendToReview(task, req.user._id);
+    } else {
+      task.completedBy = null;
+      task.testedBy = null;
     }
 
     await task.save();
@@ -496,11 +511,20 @@ const updateTaskChecklist = async (req, res) => {
 
     // Auto-mark task as completed if all items are checked
     if (task.progress === 100) {
-      task.status = task.tester ? "In Review" : "Completed";
+      if (task.tester) {
+        task.status = "In Review";
+      } else {
+        task.status = "Completed";
+        task.completedBy = req.user._id;
+      }
     } else if (task.progress > 0) {
       task.status = "In Progress";
+      task.completedBy = null;
+      task.testedBy = null;
     } else {
       task.status = "Pending";
+      task.completedBy = null;
+      task.testedBy = null;
     }
 
     await task.save();
@@ -587,9 +611,20 @@ const reviewTask = async (req, res) => {
       task.status = "Completed";
       task.progress = 100;
       task.todoChecklist.forEach((item) => (item.completed = true));
+      task.testedBy = req.user._id;
+      if (!task.completedBy) {
+        if (task.completionAttachments && task.completionAttachments.length > 0) {
+          const lastAttachment = task.completionAttachments[task.completionAttachments.length - 1];
+          task.completedBy = lastAttachment.uploadedBy;
+        } else if (task.assignedTo && task.assignedTo.length > 0) {
+          task.completedBy = task.assignedTo[0];
+        }
+      }
     } else {
       task.status = "Changes Requested";
       task.progress = Math.min(task.progress || 0, 95);
+      task.completedBy = null;
+      task.testedBy = null;
     }
 
     await task.save();

@@ -30,6 +30,7 @@ const TeamCard = ({
     projects = [],
     memberCount,
     projectCount,
+    createdBy,
   } = team;
   const safeMemberCount =
     typeof memberCount === "number" ? memberCount : members.length;
@@ -84,6 +85,11 @@ const TeamCard = ({
             <p className="text-xs text-gray-400">
               {safeMemberCount} member{safeMemberCount !== 1 ? "s" : ""}
             </p>
+            {createdBy && (
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                Created by: <span className="font-medium text-gray-700">{createdBy.name || (typeof createdBy === "string" ? createdBy : "System")}</span>
+              </p>
+            )}
           </div>
         </div>
       </div>

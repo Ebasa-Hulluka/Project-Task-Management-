@@ -39,6 +39,7 @@ const ProjectCard = ({
     endDate,
     team = [],
     tasks = [],
+    createdBy,
     createdAt,
   } = project;
 
@@ -150,12 +151,12 @@ const ProjectCard = ({
       </div>
 
       {/* Details Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-y-4 gap-x-3 mb-4 bg-gray-50/50 p-3 rounded-lg border border-gray-100/50">
         <div>
-          <p className="text-xs text-gray-400 mb-1">Timeline</p>
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-1">Timeline</p>
           <div className="flex items-center gap-1 text-xs text-gray-600">
-            <LuCalendar className="text-gray-400" />
-            <span>
+            <LuCalendar className="text-gray-400 shrink-0" />
+            <span className="truncate">
               {startDate ? moment(startDate).format("MMM D") : "N/A"} -{" "}
               {endDate ? moment(endDate).format("MMM D, YYYY") : "N/A"}
             </span>
@@ -163,34 +164,38 @@ const ProjectCard = ({
         </div>
 
         <div>
-          <p className="text-xs text-gray-400 mb-1">Tasks</p>
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-1">Tasks</p>
           <div className="flex items-center gap-1 text-xs text-gray-600">
-            <LuCircleCheck className="text-green-500" />
-            <span>
+            <LuCircleCheck className="text-green-500 shrink-0" />
+            <span className="truncate">
               {taskSummary.completed}/{taskSummary.total} completed
             </span>
           </div>
         </div>
-      </div>
 
-      {/* Team */}
-      <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <LuUsers className="text-gray-400 shrink-0" />
-            <span
-              className="text-xs text-gray-500 truncate"
-              title={teamNames.join(" · ")}
-            >
-              {teamNames.length > 0
-                ? teamNames.join(" · ")
-                : `${teamMemberUsers.length} member${teamMemberUsers.length !== 1 ? "s" : ""}`}
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-1">Project Manager</p>
+          <div className="flex items-center gap-1.5 text-xs text-gray-700 font-medium">
+            <span className="w-4.5 h-4.5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[9px] font-bold shrink-0">
+              {(createdBy && typeof createdBy === "object" ? createdBy.name : "U").charAt(0).toUpperCase()}
+            </span>
+            <span className="truncate text-gray-600" title={createdBy && typeof createdBy === "object" ? createdBy.name : "Unknown Manager"}>
+              {createdBy && typeof createdBy === "object" ? createdBy.name : "Unknown Manager"}
             </span>
           </div>
         </div>
 
-        <AvatarGroup users={teamMemberUsers} maxVisible={3} size="sm" />
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-1">Assigned Teams ({teamNames.length})</p>
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            <LuUsers className="text-gray-400 shrink-0" />
+            <span className="truncate font-medium text-gray-700" title={teamNames.join(", ")}>
+              {teamNames.length > 0 ? teamNames.join(", ") : "None assigned"}
+            </span>
+          </div>
+        </div>
       </div>
+
 
       {/* Action Buttons */}
       {showActions && (

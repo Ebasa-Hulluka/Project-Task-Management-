@@ -59,22 +59,6 @@ let PORT = Number(process.env.PORT) || 5000;
 
 const logRoutes = (port) => {
   console.log(`Server running on port ${port}`);
-  console.log(
-    `Uploads accessible at: http://localhost:${port}/uploads/filename.jpg`,
-  );
-
-  console.log("\n=== Available API Routes ===");
-  console.log("Auth Routes: /api/auth");
-  console.log("User Routes: /api/users");
-  console.log("Task Routes: /api/tasks");
-  console.log("Project Routes: /api/projects");
-  console.log("Team Routes: /api/teams");
-  console.log("Report Routes: /api/reports");
-  console.log("Public Routes: /api/public");
-  console.log("Notification Routes: /api/notifications");
-  console.log("Activity Routes: /api/activity");
-  console.log("Chat Routes: /api/chat");
-  console.log("===========================\n");
 };
 
 const listen = (startingPort) =>
@@ -123,9 +107,6 @@ const startServer = async () => {
   try {
     await connectDB();
     await ensureRoleHierarchy();
-    console.log("Database connected successfully");
-    console.log("Uploads folder path:", uploadsDir);
-    console.log("Uploads folder exists:", fs.existsSync(uploadsDir));
 
     initSocket(server);
     await listen(PORT);
