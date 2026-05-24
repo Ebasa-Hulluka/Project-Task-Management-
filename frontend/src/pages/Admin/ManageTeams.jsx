@@ -12,6 +12,7 @@ import SelectUsers from "../../components/Inputs/SelectUsers";
 import AvatarGroup from "../../components/AvatarGroup";
 import DeleteAlert from "../../components/DeleteAlert";
 import useIncrementalList from "../../hooks/useIncrementalList";
+import { useUser } from "../../context/userContext";
 
 const EMPTY_TEAM_FORM = {
   name: "",
@@ -21,6 +22,9 @@ const EMPTY_TEAM_FORM = {
 };
 
 const ManageTeams = () => {
+  const { user } = useUser();
+  const isManager = user?.role === "projectManager";
+
   const [teams, setTeams] = useState([]);
   const [filteredTeams, setFilteredTeams] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -382,17 +386,19 @@ const ManageTeams = () => {
             <p className="text-sm text-gray-500 mt-1">Manage teams, members, and leads</p>
           </div>
 
-          <button
-            className="btn-primary flex items-center gap-2"
-            onClick={() => {
-              setFormData(EMPTY_TEAM_FORM);
-              setFormTouched(false);
-              setShowCreateModal(true);
-            }}
-          >
-            <LuPlus className="text-lg" />
-            Create Team
-          </button>
+          {isManager && (
+            <button
+              className="btn-primary flex items-center gap-2"
+              onClick={() => {
+                setFormData(EMPTY_TEAM_FORM);
+                setFormTouched(false);
+                setShowCreateModal(true);
+              }}
+            >
+              <LuPlus className="text-lg" />
+              Create Team
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -466,26 +472,29 @@ const ManageTeams = () => {
                 <TeamCard
                   key={team._id}
                   team={team}
-                  onClick={openEditModal}
-                  onEdit={openEditModal}
-                  onDelete={handleDeleteTeam}
-                  showActions
+                  onClick={isManager ? openEditModal : undefined}
+                  onEdit={isManager ? openEditModal : undefined}
+                  onDelete={isManager ? handleDeleteTeam : undefined}
+                  showActions={isManager}
+                  viewOnly={!isManager}
                 />
               ))
             ) : (
               <div className="col-span-full text-center py-12">
                 <LuUsers className="text-5xl text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 mb-4">No teams found</p>
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    setFormData(EMPTY_TEAM_FORM);
-                    setFormTouched(false);
-                    setShowCreateModal(true);
-                  }}
-                >
-                  Create Your First Team
-                </button>
+                {isManager && (
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      setFormData(EMPTY_TEAM_FORM);
+                      setFormTouched(false);
+                      setShowCreateModal(true);
+                    }}
+                  >
+                    Create Your First Team
+                  </button>
+                )}
               </div>
             )}
           </div>

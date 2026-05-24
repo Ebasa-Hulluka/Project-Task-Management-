@@ -11,6 +11,7 @@ const seedPassword = process.env.SUPER_ADMIN_PASSWORD || "123456";
 const seedName = process.env.SUPER_ADMIN_NAME || "Super Admin";
 
 const seedSuperAdmin = async () => {
+  let exitCode = 0;
   try {
     await mongoose.connect(process.env.MONGO_URL);
     console.log("Connected to MongoDB");
@@ -71,11 +72,14 @@ const seedSuperAdmin = async () => {
 
     await superAdmin.save();
     console.log("Super Admin created successfully:", superAdmin.email);
-
-    process.exit(0);
   } catch (error) {
     console.error("Error seeding super admin:", error);
-    process.exit(1);
+    exitCode = 1;
+  } finally {
+    try {
+      await mongoose.connection.close();
+    } catch (_) {}
+    process.exit(exitCode);
   }
 };
 

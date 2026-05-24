@@ -43,6 +43,28 @@ const authorize = (...roles) => {
   };
 };
 
+// Strict role-based authorization middleware (no superAdmin or admin bypass)
+const authorizeStrict = (...roles) => {
+  const allowedRoles = roles.map(normalizeRole);
+
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const currentRole = normalizeRole(req.user.role);
+
+    if (!allowedRoles.includes(currentRole)) {
+      return res.status(403).json({
+        message: `Forbidden: Required roles: ${roles.join(", ")}`,
+      });
+    }
+
+    next();
+  };
+};
+
+
 const isSuperAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -91,4 +113,4 @@ const isCreator = (model) => {
   };
 };
 
-module.exports = { authorize, isCreator, isSuperAdmin };
+module.exports = { authorize, authorizeStrict, isCreator, isSuperAdmin };

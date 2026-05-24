@@ -9,7 +9,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-primary leading-tight">Task Manager</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-primary leading-tight">Project Manager</h1>
           </Link>
         </div>
 
@@ -28,7 +28,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm app-text-muted">
-          <p>© {new Date().getFullYear()} Task Manager. All rights reserved.</p>
+          <p>Â© {new Date().getFullYear()} Project Manager. All rights reserved.</p>
         </div>
       </div>
 
@@ -44,7 +44,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
           <div className="max-w-md text-center">
             <img
               src="/illustration.svg"
-              alt="Task Manager Illustration"
+              alt="Project Manager Illustration"
               className="w-full mb-8"
               onError={(e) => {
                 e.target.onerror = null;

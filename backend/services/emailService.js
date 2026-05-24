@@ -31,8 +31,8 @@ const isMailConfigured = () => {
 
 const getFromAddress = () => {
   const smtpUser = getEnv("SMTP_USER");
-  const sender = smtpUser || "no-reply@taskmanager.local";
-  return `Debo Task Manager <${sender}>`;
+  const sender = smtpUser || "no-reply@projectmanager.local";
+  return `Debo Project Manager <${sender}>`;
 };
 
 const getSmtpPassword = () => {
@@ -140,11 +140,11 @@ const sendNewUserCredentialsEmail = async ({ to, name, password, role }) => {
 
   return sendMail({
     to: username,
-    subject: "Your Debo Task Manager account is ready",
+    subject: "Your Debo Project Manager account is ready",
     text: [
       `Hello ${displayName},`,
       "",
-      `An admin created your Debo Task Manager ${userRole} account.`,
+      `An admin created your Debo Project Manager ${userRole} account.`,
       "",
       `Website: ${clientUrl}`,
       `Username: ${username}`,
@@ -155,7 +155,7 @@ const sendNewUserCredentialsEmail = async ({ to, name, password, role }) => {
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
         <p>Hello ${escapedDisplayName},</p>
-        <p>An admin created your Debo Task Manager ${escapedUserRole} account.</p>
+        <p>An admin created your Debo Project Manager ${escapedUserRole} account.</p>
         <p>
           <strong>Website:</strong> <a href="${escapedClientUrl}">${escapedClientUrl}</a><br />
           <strong>Username:</strong> ${escapedUsername}<br />
@@ -176,18 +176,18 @@ const sendAccountStatusEmail = async ({ to, name, action, role }) => {
 
   return sendMail({
     to: username,
-    subject: `Your Debo Task Manager account was ${normalizedAction}`,
+    subject: `Your Debo Project Manager account was ${normalizedAction}`,
     text: [
       `Hello ${displayName},`,
       "",
-      `Your Debo Task Manager ${userRole} account was ${normalizedAction}.`,
+      `Your Debo Project Manager ${userRole} account was ${normalizedAction}.`,
       "",
       `Website: ${clientUrl}`,
     ].join("\n"),
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
         <p>Hello ${escapeHtml(displayName)},</p>
-        <p>Your Debo Task Manager ${escapeHtml(userRole)} account was ${escapeHtml(normalizedAction)}.</p>
+        <p>Your Debo Project Manager ${escapeHtml(userRole)} account was ${escapeHtml(normalizedAction)}.</p>
         <p><strong>Website:</strong> <a href="${escapeHtml(clientUrl)}">${escapeHtml(clientUrl)}</a></p>
       </div>
     `,
@@ -201,7 +201,7 @@ const sendRoleChangedEmail = async ({ to, name, previousRole, newRole }) => {
 
   return sendMail({
     to: username,
-    subject: "Your Debo Task Manager role was changed",
+    subject: "Your Debo Project Manager role was changed",
     text: [
       `Hello ${displayName},`,
       "",
@@ -249,7 +249,7 @@ const sendPasswordResetCompletedEmail = async ({ to, name, password }) => {
 
   return sendMail({
     to: username,
-    subject: "Your Debo Task Manager password was reset",
+    subject: "Your Debo Project Manager password was reset",
     text: [
       `Hello ${displayName},`,
       "",

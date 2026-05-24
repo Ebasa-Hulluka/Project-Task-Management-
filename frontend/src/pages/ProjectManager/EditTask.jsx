@@ -100,9 +100,9 @@ const EditTask = () => {
           description: task.description || "",
           priority: task.priority || "Medium",
           dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
-          assignedTo: (task.assignedTo || []).map((u) =>
-            typeof u === "object" ? u._id : u,
-          ),
+          assignedTo: (task.assignedTo || [])
+            .filter(Boolean)
+            .map((u) => (typeof u === "object" ? u._id : u)),
           tester:
             task.tester && typeof task.tester === "object"
               ? task.tester._id
