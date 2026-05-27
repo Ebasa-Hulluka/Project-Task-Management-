@@ -17,7 +17,7 @@ import { ThemeProvider, useTheme } from "./context/themeContext";
 // Landing Page - NEW
 import Landing from "./pages/Landing";
 
-// Auth Pa
+// Auth Pag
 import Login from "./pages/Auth/Login";
 import SelectRole from "./pages/Auth/SelectRole";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
