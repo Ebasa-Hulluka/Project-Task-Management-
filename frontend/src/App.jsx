@@ -14,7 +14,7 @@ import UserProvider from "./context/userContext";
 import { useUser } from "./context/userContext";
 import { ThemeProvider, useTheme } from "./context/themeContext";
 
-// Landing Page - N
+// Landing Page - 
 import Landing from "./pages/Landing";
 
 // Auth Pages
