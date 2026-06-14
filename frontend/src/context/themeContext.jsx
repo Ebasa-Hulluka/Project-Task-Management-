@@ -12,9 +12,9 @@ const getSystemTheme = () => {
 };
 
 const getStoredTheme = () => {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-  return VALID_THEMES.includes(storedTheme) ? storedTheme : "system";
+  return VALID_THEMES.includes(storedTheme) ? storedTheme : "light";
 };
 
 const applyThemeToDocument = (theme) => {

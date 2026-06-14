@@ -30,7 +30,7 @@ const Landing = () => {
   }, []);
 
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <div className="landing-page brand-light-scope min-h-screen app-bg">
       <Navbar />
       <Hero />
       <Features />

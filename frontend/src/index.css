@@ -10,41 +10,41 @@
 
 :root,
 html[data-theme="light"] {
-  /* VS Code Light+ inspired */
-  --app-primary-blue: #007acc;
-  --app-primary-green: #2ea043;
+  /* Debo brand palette */
+  --app-primary-blue: #194f87;
+  --app-primary-green: #0f5841;
   --app-primary: var(--app-primary-blue);
   --app-success: var(--app-primary-green);
-  --app-link: #0066bf;
-  --app-blue-soft: rgba(0, 122, 204, 0.12);
-  --app-green-soft: rgba(46, 160, 67, 0.12);
+  --app-link: #194f87;
+  --app-blue-soft: rgba(25, 79, 135, 0.12);
+  --app-green-soft: rgba(15, 88, 65, 0.12);
 
   --app-bg: #ffffff;
-  --app-surface: #f3f3f3; /* sidebar / panels */
-  --app-surface-hover: #eaeaea;
+  --app-surface: #f6f8fb;
+  --app-surface-hover: #e8eef7;
   --app-card-bg: #ffffff;
-  --app-border: #e5e5e5;
-  --app-text: #1f1f1f;
-  --app-text-muted: #5f6368;
+  --app-border: #dbe5ef;
+  --app-text: #172033;
+  --app-text-muted: #5f6f82;
 }
 
 html[data-theme="dark"] {
-  /* VS Code Dark+ inspired */
-  --app-primary-blue: #007acc;
-  --app-primary-green: #89d185;
+  /* Debo brand palette adapted for dark surfaces */
+  --app-primary-blue: #6aa5df;
+  --app-primary-green: #68c39f;
   --app-primary: var(--app-primary-blue);
   --app-success: #2ea043;
   --app-link: #3794ff;
-  --app-blue-soft: rgba(0, 122, 204, 0.18);
-  --app-green-soft: rgba(46, 160, 67, 0.18);
+  --app-blue-soft: rgba(106, 165, 223, 0.18);
+  --app-green-soft: rgba(104, 195, 159, 0.18);
 
-  --app-bg: #1e1e1e; /* editor background */
-  --app-surface: #252526; /* sidebar/panels */
-  --app-surface-hover: #2a2d2e;
-  --app-card-bg: #252526;
-  --app-border: #3c3c3c;
-  --app-text: #d4d4d4;
-  --app-text-muted: #9da5b4;
+  --app-bg: #111827;
+  --app-surface: #182235;
+  --app-surface-hover: #21304a;
+  --app-card-bg: #182235;
+  --app-border: #2d3f5c;
+  --app-text: #e7edf5;
+  --app-text-muted: #aab7c8;
 }
 
 /* Compatibility layer for legacy light-only utility classes in dashboard pages */
@@ -116,6 +116,25 @@ html[data-theme="dark"] .hover\:bg-gray-200:hover {
 }
 
 @layer components {
+  .auth-light-scope,
+  .brand-light-scope {
+    --app-primary-blue: #194f87;
+    --app-primary-green: #0f5841;
+    --app-primary: var(--app-primary-blue);
+    --app-success: var(--app-primary-green);
+    --app-link: #194f87;
+    --app-blue-soft: rgba(25, 79, 135, 0.12);
+    --app-green-soft: rgba(15, 88, 65, 0.12);
+    --app-bg: #ffffff;
+    --app-surface: #f8fafc;
+    --app-surface-hover: #e8eef7;
+    --app-card-bg: #ffffff;
+    --app-border: #dbe5ef;
+    --app-text: #172033;
+    --app-text-muted: #5f6f82;
+    color: var(--app-text);
+  }
+
   .app-bg {
     background-color: var(--app-bg);
   }

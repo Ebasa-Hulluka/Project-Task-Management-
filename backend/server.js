@@ -21,6 +21,7 @@ const activityRoutes = require("./routes/activityRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const { initSocket } = require("./socket/chatSocket");
 const { ensureRoleHierarchy } = require("./utils/roleBootstrapService");
+const { seedSuperAdmin } = require("./scripts/seedSuperAdmin");
 const { corsOptions } = require("./utils/corsConfig");
 
 const app = express();
@@ -107,6 +108,7 @@ const startServer = async () => {
   try {
     await connectDB();
     await ensureRoleHierarchy();
+    await seedSuperAdmin();
 
     initSocket(server);
     await listen(PORT);

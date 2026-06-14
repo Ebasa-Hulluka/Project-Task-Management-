@@ -4,18 +4,22 @@ require("dotenv").config({
 });
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const connectDB = require("../config/db");
 const User = require("../models/User");
 
-const seedEmail = process.env.SUPER_ADMIN_EMAIL || "ebasahuluka@gmail.com";
-const seedPassword = process.env.SUPER_ADMIN_PASSWORD || "123456";
-const seedName = process.env.SUPER_ADMIN_NAME || "Super Admin";
+const DEFAULT_SUPER_ADMIN = {
+  email: "ebasahuluka@gmail.com",
+  password: "123456",
+  name: "ebasahuluka",
+};
+
+const seedEmail = process.env.SUPER_ADMIN_EMAIL || DEFAULT_SUPER_ADMIN.email;
+const seedPassword =
+  process.env.SUPER_ADMIN_PASSWORD || DEFAULT_SUPER_ADMIN.password;
+const seedName = process.env.SUPER_ADMIN_NAME || DEFAULT_SUPER_ADMIN.name;
 
 const seedSuperAdmin = async () => {
-  let exitCode = 0;
   try {
-    await mongoose.connect(process.env.MONGO_URL);
-    console.log("Connected to MongoDB");
-
     const existingSuperAdmin = await User.findOne({ role: "superAdmin" });
     const existingEmailUser = await User.findOne({ email: seedEmail });
 
@@ -23,16 +27,14 @@ const seedSuperAdmin = async () => {
     const hashedPassword = await bcrypt.hash(seedPassword, salt);
 
     if (existingSuperAdmin) {
-      if (existingSuperAdmin.email === seedEmail) {
-        console.log("Super Admin already exists:", existingSuperAdmin.email);
-        return;
-      }
-
-      if (existingEmailUser && existingEmailUser._id.toString() !== existingSuperAdmin._id.toString()) {
+      if (
+        existingEmailUser &&
+        existingEmailUser._id.toString() !== existingSuperAdmin._id.toString()
+      ) {
         console.log(
           `Cannot update super admin: email "${seedEmail}" is already used by another account with role "${existingEmailUser.role}".`,
         );
-        return;
+        return false;
       }
 
       existingSuperAdmin.name = seedName;
@@ -44,8 +46,8 @@ const seedSuperAdmin = async () => {
       existingSuperAdmin.isActive = true;
 
       await existingSuperAdmin.save();
-      console.log("Updated existing super admin:", existingSuperAdmin.email);
-      return;
+      console.log("Super Admin ready:", existingSuperAdmin.email);
+      return true;
     }
 
     if (existingEmailUser) {
@@ -57,7 +59,7 @@ const seedSuperAdmin = async () => {
       existingEmailUser.isActive = true;
       await existingEmailUser.save();
       console.log("Promoted existing account to super admin:", existingEmailUser.email);
-      return;
+      return true;
     }
 
     const superAdmin = new User({
@@ -72,15 +74,24 @@ const seedSuperAdmin = async () => {
 
     await superAdmin.save();
     console.log("Super Admin created successfully:", superAdmin.email);
+    return true;
   } catch (error) {
     console.error("Error seeding super admin:", error);
-    exitCode = 1;
-  } finally {
-    try {
-      await mongoose.connection.close();
-    } catch (_) {}
-    process.exit(exitCode);
+    return false;
   }
 };
 
-seedSuperAdmin();
+const runSeedSuperAdmin = async () => {
+  await connectDB();
+  const success = await seedSuperAdmin();
+  try {
+    await mongoose.connection.close();
+  } catch (_) {}
+  process.exit(success ? 0 : 1);
+};
+
+if (require.main === module) {
+  runSeedSuperAdmin();
+}
+
+module.exports = { seedSuperAdmin };

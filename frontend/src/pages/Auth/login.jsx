@@ -104,15 +104,11 @@ const Login = () => {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout
+      title="Welcome Back"
+      subtitle="Sign in with your email and password to continue."
+    >
       <div className="w-full lg:w-[78%] h-3/4 md:h-full mx-auto flex flex-col justify-center">
-        <div className="text-center">
-          <h3 className="text-base md:text-lg font-bold app-text">Welcome Back</h3>
-          <p className="text-xs app-text-muted mt-2 mb-8 font-medium">
-            Please enter your details to log in
-          </p>
-        </div>
-
         <form onSubmit={handleLogin} className="space-y-5">
           {/* Email Field */}
           <div className="relative">
@@ -123,7 +119,7 @@ const Login = () => {
                 if (error.email) setError({ ...error, email: "" });
               }}
               label="Email Address"
-              placeholder="ebasahuluka1@gmail.com"
+              placeholder="ebasahuluka@gmail.com"
               type="email"
               name="email"
               list={savedEmails.length ? EMAIL_DATALIST_ID : undefined}
