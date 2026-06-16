@@ -2,8 +2,13 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    // Connect using the connection string from .env
-    await mongoose.connect(process.env.MONGO_URL);
+    if (!process.env.MONGO_URL) {
+      throw new Error("MONGO_URL is not set");
+    }
+
+    await mongoose.connect(process.env.MONGO_URL, {
+      serverSelectionTimeoutMS: 10000,
+    });
     console.log("MongoDB connected");
   } catch (err) {
     console.error("Error connecting to MongoDB", err);
