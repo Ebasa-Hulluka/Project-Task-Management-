@@ -9,7 +9,7 @@ node_modules/
 
 # Build output
 dist/
-build/
+build/ 
 
 # Runtime/generated files
 backend/uploads/
