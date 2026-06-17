@@ -3,13 +3,11 @@ require("dotenv").config({
   override: true,
 });
 
-const mongoose = require("mongoose");
 const {
-  mongoConnectOptions,
-  redactMongoUrl,
   getMongoTroubleshootingHint,
-  verifyMongoSrvRecord,
+  disconnectDB,
 } = require("../config/db");
+const connectDB = require("../config/db");
 
 const checkMongoConnection = async () => {
   try {
@@ -17,12 +15,11 @@ const checkMongoConnection = async () => {
       throw new Error("MONGO_URL is not set");
     }
 
-    console.log("Checking MongoDB:", redactMongoUrl(process.env.MONGO_URL));
-    await verifyMongoSrvRecord(process.env.MONGO_URL);
-    await mongoose.connect(process.env.MONGO_URL, mongoConnectOptions);
+    console.log("Checking MongoDB connection");
+    const connection = await connectDB();
     console.log("MongoDB connected");
-    console.log("Database:", mongoose.connection.name);
-    await mongoose.disconnect();
+    console.log("Database:", connection.name);
+    await disconnectDB();
     process.exit(0);
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);
