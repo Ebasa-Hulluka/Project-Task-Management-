@@ -101,6 +101,21 @@ Use the following Super Admin account to log in:
 
 The backend provides RESTful APIs for all functionalities. Refer to the routes in `backend/routes/` for endpoints.
 
+## Render Deployment Notes
+
+This project includes a `render.yaml` blueprint for deploying the backend as a Render web service.
+
+If deployment fails with a MongoDB Atlas message about IP whitelist or Network Access, the code is reaching Atlas but Atlas is rejecting Render's outbound IP address. Fix it in MongoDB Atlas:
+
+1. Open your Render service dashboard.
+2. Open **Connect** in the upper-right corner.
+3. Open the **Outbound** tab and copy the outbound IP ranges.
+4. In MongoDB Atlas, open **Network Access**.
+5. Add those Render outbound IP ranges.
+6. Wait 1-2 minutes, then redeploy the Render service.
+
+For quick development testing only, Atlas can allow `0.0.0.0/0`, but do not use that as a production security setting.
+
 ## Contributing
 
 1. Fork the repository.

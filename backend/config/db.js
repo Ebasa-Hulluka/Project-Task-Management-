@@ -74,7 +74,12 @@ const getMongoTroubleshootingHint = (err) => {
   }
 
   if (err?.message?.includes("IP") || err?.message?.includes("whitelist")) {
-    return "MongoDB rejected this client IP. Add your current IP address in Atlas Network Access.";
+    return [
+      "MongoDB rejected this client IP.",
+      "For Render deployments, add the service's outbound IP ranges in MongoDB Atlas Network Access.",
+      "For local development, add your current IP address.",
+      "Use 0.0.0.0/0 only as a temporary development/testing fallback.",
+    ].join(" ");
   }
 
   return "Check MONGO_URL, Atlas Network Access, and whether the cluster is running.";
