@@ -124,7 +124,9 @@ export const getImageUrl = (imageUrl) => {
   }
 
   // Otherwise, prepend the base URL
-  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const baseUrl =
+    import.meta.env.VITE_API_URL ||
+    "https://project-task-management-5qip.onrender.com";
   return `${baseUrl}${imageUrl}`;
 };
 

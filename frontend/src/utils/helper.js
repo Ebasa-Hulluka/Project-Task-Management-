@@ -256,7 +256,7 @@ export const resolveAttachmentUrl = (url) => {
   if (trimmed.startsWith("/")) {
     const base =
       (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-      "http://localhost:8000";
+      "https://project-task-management-5qip.onrender.com";
     return `${String(base).replace(/\/$/, "")}${trimmed}`;
   }
   try {
