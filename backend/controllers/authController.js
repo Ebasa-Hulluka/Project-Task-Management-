@@ -42,9 +42,9 @@ const uploadProfileImage = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // Generate the URL - use the port from your server
-    const port = process.env.PORT || 5000;
-    const imageUrl = `http://localhost:${port}/uploads/${req.file.filename}`;
+    const protocol = req.get("x-forwarded-proto") || req.protocol;
+    const host = req.get("host");
+    const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
 
     res.status(200).json({
       success: true,
