@@ -37,6 +37,25 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Project Task Management API is running",
+    endpoints: {
+      health: "/api/health",
+      public: "/api/public/landing-stats",
+      auth: "/api/auth/login",
+    },
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "API health check passed",
+  });
+});
+
 app.use(
   "/uploads",
   express.static(path.join(__dirname, "uploads"), {

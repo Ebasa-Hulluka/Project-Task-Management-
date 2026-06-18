@@ -206,7 +206,9 @@ const classifyMongoError = (err) => {
   if (
     message.includes("IP") ||
     message.includes("whitelist") ||
-    message.includes("Network Access")
+    message.includes("Network Access") ||
+    message.includes("tlsv1 alert internal error") ||
+    message.includes("SSL routines")
   ) {
     return "ip";
   }
