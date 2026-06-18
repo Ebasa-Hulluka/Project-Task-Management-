@@ -1,3 +1,5 @@
+import { BASE_URL } from "./apiPaths";
+
 // Date formatting helpers
 export const formatDate = (date) => {
   if (!date) return "N/A";
@@ -254,10 +256,7 @@ export const resolveAttachmentUrl = (url) => {
   if (trimmed.startsWith("blob:") || trimmed.startsWith("data:")) return trimmed;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (trimmed.startsWith("/")) {
-    const base =
-      (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-      "https://project-task-management-5qip.onrender.com";
-    return `${String(base).replace(/\/$/, "")}${trimmed}`;
+    return `${String(BASE_URL).replace(/\/$/, "")}${trimmed}`;
   }
   try {
     return new URL(trimmed).href;

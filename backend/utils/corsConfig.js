@@ -4,8 +4,6 @@ const configuredOrigins = (process.env.CLIENT_URL || "")
   .filter(Boolean);
 
 const isLocalDevOrigin = (origin) => {
-  if (process.env.NODE_ENV === "production") return false;
-
   try {
     const url = new URL(origin);
     return ["localhost", "127.0.0.1"].includes(url.hostname);

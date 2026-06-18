@@ -1,4 +1,4 @@
-import { API_PATHS } from "./apiPaths";
+import { API_PATHS, BASE_URL } from "./apiPaths";
 import axiosInstance from "./axiosInstance";
 
 /**
@@ -124,10 +124,7 @@ export const getImageUrl = (imageUrl) => {
   }
 
   // Otherwise, prepend the base URL
-  const baseUrl =
-    import.meta.env.VITE_API_URL ||
-    "https://project-task-management-5qip.onrender.com";
-  return `${baseUrl}${imageUrl}`;
+  return `${BASE_URL}${imageUrl}`;
 };
 
 export default uploadImage;
