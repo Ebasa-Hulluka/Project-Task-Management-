@@ -18,7 +18,7 @@ import { ThemeProvider, useTheme } from "./context/themeContext";
 import Landing from "./pages/Landing";
 
 // Auth Pages
-import Login from "./pages/Auth/Login";
+import Login from "./pages/Auth/login";
 import SelectRole from "./pages/Auth/SelectRole";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 
